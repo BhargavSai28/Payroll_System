@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}Manager Dashboard - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .dashboard-header h1 {
+        font-size: 2rem;
+        color: #333;
+        margin: 0;
+    }
+
+    .manager-badge {
+        background: #667eea;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 4px solid #667eea;
+    }
+
+    .stat-card.pending {
+        border-left-color: #ffc107;
+    }
+
+    .stat-card.present {
+        border-left-color: #28a745;
+    }
+
+    .stat-card.team {
+        border-left-color: #17a2b8;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-card.pending .stat-number {
+        color: #ffc107;
+    }
+
+    .stat-card.present .stat-number {
+        color: #28a745;
+    }
+
+    .stat-card.team .stat-number {
+        color: #17a2b8;
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .action-btn {
+        padding: 1rem;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #667eea;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .action-btn:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .leave-request-item {
+        padding: 1rem;
+        border: 1px solid #f0f0f0;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        background: #f9f9f9;
+    }
+
+    .leave-request-item:hover {
+        background: white;
+        border-color: #667eea;
+    }
+
+    .leave-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+    }
+
+    .leave-employee {
+        font-weight: 600;
+        color: #333;
+        font-size: 1.05rem;
+    }
+
+    .leave-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .badge-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .leave-details {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 0.5rem;
+    }
+
+    .leave-reason {
+        font-size: 0.85rem;
+        color: #999;
+        font-style: italic;
+        margin-bottom: 1rem;
+    }
+
+    .leave-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-small {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-approve {
+        background: #28a745;
+        color: white;
+    }
+
+    .btn-approve:hover {
+        background: #218838;
+    }
+
+    .btn-reject {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-reject:hover {
+        background: #c82333;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+    }
+
+    .empty-state-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div>
+        <h1>Manager Dashboard</h1>
+        <small style="color: #999;">Welcome, <span id="managerName"></span></small>
+    </div>
+    <span class="manager-badge">👤 Manager</span>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card team">
+        <div class="stat-number" id="teamCount">0</div>
+        <div class="stat-label">Team Members</div>
+    </div>
+    <div class="stat-card pending">
+        <div class="stat-number" id="pendingLeaves">0</div>
+        <div class="stat-label">Pending Leaves</div>
+    </div>
+    <div class="stat-card present">
+        <div class="stat-number" id="todayPresent">0</div>
+        <div class="stat-label">Present Today</div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions">
+    <a href="/manager-leave-requests" class="action-btn"> Leave Requests</a>
+    <a href="/manager-attendance" class="action-btn"> Team Attendance</a>
+    <a href="/manager-payroll" class="action-btn"> Payroll Reports</a>
+    <a href="/manager-team" class="action-btn"> Team Details</a>
+</div>
+
+<!-- Recent Leave Requests -->
+<div class="section">
+    <h2 class="section-title">⏳ Pending Leave Requests</h2>
+    <div id="pendingLeavesList"></div>
+</div>
+
+<!-- Logout Button -->
+<div style="text-align: center; margin-top: 2rem;">
+    <button class="btn btn-secondary" onclick="logout()">Logout</button>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const managerId = localStorage.getItem('user_id');
+    const managerName = localStorage.getItem('user_name');
+    const userRole = localStorage.getItem('user_role');
+
+    // Verify manager role
+    if (userRole !== 'manager') {
+        window.location.href = '/login';
+    }
+
+    // Set manager name
+    document.getElementById('managerName').textContent = managerName;
+
+    // Load dashboard data
+    async function loadDashboard() {
+        try {
+            const response = await fetch(`/api/manager/dashboard/${managerId}`);
+            const data = await response.json();
+
+            document.getElementById('teamCount').textContent = data.team_count;
+            document.getElementById('pendingLeaves').textContent = data.pending_leaves;
+            document.getElementById('todayPresent').textContent = data.today_present;
+
+            loadPendingLeaves();
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+        }
+    }
+
+    // Load pending leave requests
+    async function loadPendingLeaves() {
+        try {
+            const response = await fetch(`/api/manager/leave-requests/${managerId}?status=pending`);
+            const leaves = await response.json();
+
+            const container = document.getElementById('pendingLeavesList');
+
+            if (leaves.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✅</div>
+                        <p>No pending leave requests</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = leaves.map(leave => `
+                <div class="leave-request-item">
+                    <div class="leave-header">
+                        <div class="leave-employee">${leave.employee_name}</div>
+                        <span class="leave-badge badge-pending">${leave.leave_type}</span>
+                    </div>
+                    <div class="leave-details">
+                        📅 ${formatDate(leave.from_date)} to ${formatDate(leave.to_date)} (${leave.days} days)
+                    </div>
+                    <div class="leave-reason">
+                        Reason: ${leave.reason}
+                    </div>
+                    <div class="leave-actions">
+                        <button class="btn-small btn-approve" onclick="approveLeave(${leave.id})">
+                            ✓ Approve
+                        </button>
+                        <button class="btn-small btn-reject" onclick="rejectLeave(${leave.id})">
+                            ✕ Reject
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading leave requests:', error);
+        }
+    }
+
+    // Approve leave request
+    async function approveLeave(requestId) {
+        try {
+            const response = await fetch(`/api/manager/leave-request/${requestId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ manager_id: managerId })
+            });
+
+            if (response.ok) {
+                showAlert('Leave request approved!', 'success');
+                loadDashboard();
+            } else {
+                showAlert('Failed to approve leave request', 'danger');
+            }
+        } catch (error) {
+            console.error('Error approving leave:', error);
+            showAlert('Error approving leave request', 'danger');
+        }
+    }
+
+    // Reject leave request
+    async function rejectLeave(requestId) {
+        if (!confirm('Are you sure you want to reject this leave request?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/manager/leave-request/${requestId}/reject`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ manager_id: managerId })
+            });
+
+            if (response.ok) {
+                showAlert('Leave request rejected!', 'success');
+                loadDashboard();
+            } else {
+                showAlert('Failed to reject leave request', 'danger');
+            }
+        } catch (error) {
+            console.error('Error rejecting leave:', error);
+            showAlert('Error rejecting leave request', 'danger');
+        }
+    }
+
+    // Logout function
+    function logout() {
+        localStorage.clear();
+        window.location.href = '/login';
+    }
+
+    // Helper function to format date
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // Load data on page load
+    loadDashboard();
+
+    // Refresh data every 30 seconds
+    setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .dashboard-header h2 {
+        color: white;
+        font-size: 2rem;
+    }
+
+    .quick-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .quick-actions button {
+        background: white;
+        color: #667eea;
+        font-weight: 600;
+    }
+
+    .quick-actions button:hover {
+        background: #f0f0f0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 4px solid rgb(130, 198, 130);
+    }
+
+    .stat-card.success {
+        border-left-color: #28a745;
+    }
+
+    .stat-card.warning {
+        border-left-color: #ffc107;
+    }
+
+    .stat-card.danger {
+        border-left-color: #dc3545;
+    }
+
+    .stat-label {
+        color: #999;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: solid rgb(130, 198, 130);
+    }
+
+    .stat-card.success .stat-value {
+        color: #28a745;
+    }
+
+    .stat-card.warning .stat-value {
+        color: #ffc107;
+    }
+
+    .stat-card.danger .stat-value {
+        color: #dc3545;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        color: #333;
+        margin-bottom: 1.5rem;
+    }
+
+    .status-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f0f8ff;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+    }
+
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #28a745;
+    }
+
+    .status-indicator.off {
+        background: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header" style="color: white; margin-top: 1rem;">
+        <h2>Dashboard</h2>
+        <div class="quick-actions">
+            <button class="btn" onclick="openModal('checkinModal')"> Check In</button>
+            <button class="btn btn-danger" onclick="openModal('checkoutModal')"> Check Out</button>
+            <button class="btn btn-secondary" onclick="location.href='/attendance'"> View Attendance</button>
+            <button class="btn btn-success" onclick="location.href='/salary'"> View Salary</button>
+            <button class="btn btn-secondary" onclick="location.href='/leave'"> Apply Leave</button>
+        </div>
+    </div>
+
+    <!-- Statistics Grid -->
+    <div class="stats-grid">
+        <div class="stat-card success">
+            <div class="stat-label">Hours Worked Today</div>
+            <div class="stat-value" id="todayHours">0.0</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Present Days (This Month)</div>
+            <div class="stat-value" id="presentDays">0</div>
+            <div style="font-size: 0.85rem; color: #999; margin-top: 0.5rem;">Days attended</div>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-label">Leaves Taken</div>
+            <div class="stat-value" id="leavesTaken">0</div>
+            <div style="font-size: 0.85rem; color: #999; margin-top: 0.5rem;">This month</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Current Month Salary</div>
+            <div class="stat-value" id="currentSalary">₹0</div>
+            <div style="font-size: 0.85rem; color: #999; margin-top: 0.5rem;">Net salary</div>
+        </div>
+    </div>
+
+    <!-- Today's Status -->
+    <div class="card">
+        <h3 class="section-title">Today's Status</h3>
+        <div class="status-info">
+            <div class="status-indicator" id="checkinStatus"></div>
+            <div>
+                <strong id="checkinTime">Not checked in yet</strong>
+                <div style="font-size: 0.85rem; color: #999;">Check-in time</div>
+            </div>
+        </div>
+        <div class="status-info">
+            <div class="status-indicator off" id="checkoutStatus"></div>
+            <div>
+                <strong id="checkoutTime">Waiting for check-out</strong>
+                <div style="font-size: 0.85rem; color: #999;">Check-out time</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Attendance -->
+    <div class="card">
+        <h3 class="section-title">Recent Attendance (Last 7 Days)</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Hours Worked</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="recentAttendance">
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #999;">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Check-in Modal -->
+<div id="checkinModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Check-in</h2>
+            <span class="close" onclick="closeModal('checkinModal')">&times;</span>
+        </div>
+        <form onsubmit="handleCheckIn(event)">
+            <div class="form-group">
+                <label for="checkinNote">Note (Optional)</label>
+                <textarea id="checkinNote" placeholder="Add a note (e.g., Working from home)" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn" style="width: 100%;">Confirm Check-in</button>
+        </form>
+    </div>
+</div>
+
+<!-- Check-out Modal -->
+<div id="checkoutModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Check-out</h2>
+            <span class="close" onclick="closeModal('checkoutModal')">&times;</span>
+        </div>
+        <form onsubmit="handleCheckOut(event)">
+            <div class="form-group">
+                <label for="checkoutNote">Note (Optional)</label>
+                <textarea id="checkoutNote" placeholder="Add a note about your work" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-danger" style="width: 100%;">Confirm Check-out</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const userId = localStorage.getItem('user_id');
+    const userName = localStorage.getItem('user_name');
+
+    if (!userId) {
+        window.location.href = '/login';
+    }
+
+    // Load dashboard data
+    async function loadDashboard() {
+        try {
+            const response = await fetch(`/api/dashboard/${userId}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                updateDashboard(data);
+            }
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+        }
+    }
+
+    function updateDashboard(data) {
+        // Update stats
+        document.getElementById('todayHours').textContent = (data.today_hours || 0).toFixed(2);
+        document.getElementById('presentDays').textContent = data.present_days || 0;
+        document.getElementById('leavesTaken').textContent = data.leaves_taken || 0;
+        document.getElementById('currentSalary').textContent = '₹' + (data.current_salary || 0).toFixed(2);
+
+        // Update today's status
+        if (data.today_checkin) {
+            document.getElementById('checkinTime').textContent = new Date(data.today_checkin).toLocaleTimeString();
+            document.getElementById('checkinStatus').classList.remove('off');
+        }
+
+        if (data.today_checkout) {
+            document.getElementById('checkoutTime').textContent = new Date(data.today_checkout).toLocaleTimeString();
+            document.getElementById('checkoutStatus').classList.remove('off');
+        }
+
+        // Update recent attendance
+        const tbody = document.getElementById('recentAttendance');
+        tbody.innerHTML = '';
+
+        if (data.recent_attendance && data.recent_attendance.length > 0) {
+            data.recent_attendance.forEach(record => {
+                const row = document.createElement('tr');
+                const checkIn = record.clock_in ? new Date(record.clock_in).toLocaleTimeString() : '-';
+                const checkOut = record.clock_out ? new Date(record.clock_out).toLocaleTimeString() : '-';
+                const status = record.clock_out ? '<span class="badge badge-success">Present</span>' : 
+                              record.clock_in ? '<span class="badge badge-warning">Checked In</span>' : 
+                              '<span class="badge badge-danger">Absent</span>';
+
+                row.innerHTML = `
+                    <td>${new Date(record.date).toLocaleDateString()}</td>
+                    <td>${checkIn}</td>
+                    <td>${checkOut}</td>
+                    <td>${(record.worked_hours || 0).toFixed(2)} hrs</td>
+                    <td>${status}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No attendance records</td></tr>';
+        }
+    }
+
+    async function handleCheckIn(event) {
+        event.preventDefault();
+        
+        try {
+            const response = await fetch('/user/checkIn', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('✓ Check-in successful!', 'success');
+                closeModal('checkinModal');
+                setTimeout(loadDashboard, 1000);
+            } else {
+                showAlert(data.error || 'Check-in failed', 'danger');
+            }
+        } catch (error) {
+            showAlert('Connection error', 'danger');
+        }
+    }
+
+    async function handleCheckOut(event) {
+        event.preventDefault();
+        
+        try {
+            const response = await fetch('/user/checkOut', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('✓ Check-out successful!', 'success');
+                closeModal('checkoutModal');
+                setTimeout(loadDashboard, 1000);
+            } else {
+                showAlert(data.error || 'Check-out failed', 'danger');
+            }
+        } catch (error) {
+            showAlert('Connection error', 'danger');
+        }
+    }
+
+    // Load data on page load
+    loadDashboard();
+    
+    // Refresh every 30 seconds
+    setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block title %}Salary - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .salary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .salary-filter {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .salary-filter .form-group {
+        margin-bottom: 0;
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .salary-slip {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+
+    .slip-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #667eea;
+    }
+
+    .slip-header h2 {
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+
+    .slip-header p {
+        color: #999;
+        margin: 0.2rem 0;
+    }
+
+    .slip-body {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+
+    .slip-section {
+        padding: 0;
+    }
+
+    .slip-section h4 {
+        color: #667eea;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #eee;
+    }
+
+    .slip-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .slip-item label {
+        color: #666;
+        font-weight: 500;
+    }
+
+    .slip-item .value {
+        color: #333;
+        font-weight: 600;
+    }
+
+    .slip-item.total {
+        border-top: 2px solid #667eea;
+        border-bottom: 2px solid #667eea;
+        padding: 1rem 0;
+        margin-top: 0.5rem;
+    }
+
+    .slip-item.total .value {
+        color: #667eea;
+        font-size: 1.2rem;
+    }
+
+    .salary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .salary-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 4px solid;
+    }
+
+    .salary-card.income {
+        border-left-color: #28a745;
+    }
+
+    .salary-card.deduction {
+        border-left-color: #dc3545;
+    }
+
+    .salary-card.net {
+        border-left-color: #667eea;
+        background: linear-gradient(135deg, rgba(102,126,234,0.05) 0%, rgba(118,75,162,0.05) 100%);
+    }
+
+    .salary-card label {
+        color: #999;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .salary-card .amount {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .salary-card.income .amount {
+        color: #28a745;
+    }
+
+    .salary-card.deduction .amount {
+        color: #dc3545;
+    }
+
+    .salary-card.net .amount {
+        color: #667eea;
+    }
+
+    .salary-history {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .history-table {
+        width: 100%;
+        margin-top: 1rem;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+    }
+
+    .download-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+    }
+
+    @media print {
+        body {
+            background: white;
+        }
+
+        .navbar, .salary-filter, .download-buttons, .salary-history {
+            display: none;
+        }
+
+        .salary-slip {
+            box-shadow: none;
+            page-break-after: always;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="salary-header" style="color: white; margin-top: 1rem;">
+        <h2>Salary & Payslip</h2>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="salary-filter">
+        <div class="form-group">
+            <label for="salaryMonth">Month</label>
+            <select id="salaryMonth" onchange="loadSalary()">
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6" selected>June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="salaryYear">Year</label>
+            <select id="salaryYear" onchange="loadSalary()">
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026" selected>2026</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Salary Summary Cards -->
+    <div class="salary-grid">
+        <div class="salary-card income">
+            <label>Basic Salary</label>
+            <div class="amount" id="basicSalary">₹0</div>
+        </div>
+
+        <div class="salary-card income">
+            <label>Regular Pay</label>
+            <div class="amount" id="regularPay">₹0</div>
+        </div>
+
+        <div class="salary-card income">
+            <label>Overtime Pay</label>
+            <div class="amount" id="overtimePay">₹0</div>
+        </div>
+
+        <div class="salary-card deduction">
+            <label>Deductions</label>
+            <div class="amount" id="deductions">₹0</div>
+        </div>
+
+        <div class="salary-card net">
+            <label>Net Salary</label>
+            <div class="amount" id="netSalary">₹0</div>
+        </div>
+    </div>
+
+    <!-- Salary Slip -->
+    <div class="salary-slip" id="salarySilp">
+        <div class="slip-header">
+            <h2>Salary Slip</h2>
+            <p id="slipMonth">June 2026</p>
+            <p id="employeeName">Employee Name</p>
+            <p id="employeeId">ID: -</p>
+        </div>
+
+        <div class="slip-body">
+            <!-- Earnings Section -->
+            <div class="slip-section">
+                <h4>Earnings</h4>
+                <div class="slip-item">
+                    <label>Basic Salary</label>
+                    <span class="value" id="slip_basic">₹0</span>
+                </div>
+                <div class="slip-item">
+                    <label>Regular Pay</label>
+                    <span class="value" id="slip_regular">₹0</span>
+                </div>
+                <div class="slip-item">
+                    <label>Overtime Pay</label>
+                    <span class="value" id="slip_overtime">₹0</span>
+                </div>
+                <div class="slip-item total">
+                    <label>Total Earnings</label>
+                    <span class="value" id="slip_total_earnings">₹0</span>
+                </div>
+            </div>
+
+            <!-- Deductions Section -->
+            <div class="slip-section">
+                <h4>Deductions</h4>
+                <div class="slip-item">
+                    <label>Total Deductions</label>
+                    <span class="value" id="slip_deductions">₹0</span>
+                </div>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="slip-section">
+                <h4>Summary</h4>
+                <div class="slip-item">
+                    <label>Working Days</label>
+                    <span class="value" id="slip_working_days">0</span>
+                </div>
+                <div class="slip-item">
+                    <label>Present Days</label>
+                    <span class="value" id="slip_present_days">0</span>
+                </div>
+                <div class="slip-item">
+                    <label>Leaves Taken</label>
+                    <span class="value" id="slip_leaves">0</span>
+                </div>
+                <div class="slip-item">
+                    <label>Total Hours</label>
+                    <span class="value" id="slip_total_hours">0</span>
+                </div>
+                <div class="slip-item">
+                    <label>Overtime Hours</label>
+                    <span class="value" id="slip_overtime_hours">0</span>
+                </div>
+                <div class="slip-item total" style="background: #f0f8ff;">
+                    <label>Net Salary</label>
+                    <span class="value" id="slip_net_salary">₹0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="download-buttons">
+            <button class="btn" onclick="printSalary()">🖨️ Print Slip</button>
+            <button class="btn btn-secondary" onclick="downloadCSV()">📥 Download CSV</button>
+            <button class="btn btn-secondary" onclick="downloadPDF()">📄 Download PDF</button>
+        </div>
+    </div>
+
+    <!-- Salary History -->
+    <div class="salary-history">
+        <h3 class="section-title">Salary History</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Year</th>
+                    <th>Basic Salary</th>
+                    <th>Regular Pay</th>
+                    <th>Overtime Pay</th>
+                    <th>Deductions</th>
+                    <th>Net Salary</th>
+                    <th>Present Days</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="salaryHistory">
+                <tr>
+                    <td colspan="9" style="text-align: center; color: #999;">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const userId = localStorage.getItem('user_id');
+    const userName = localStorage.getItem('user_name');
+
+    if (!userId) {
+        window.location.href = '/login';
+    }
+
+    async function loadSalary() {
+        const month = document.getElementById('salaryMonth').value;
+        const year = document.getElementById('salaryYear').value;
+
+        try {
+            const response = await fetch(`/api/salary/${userId}?month=${month}&year=${year}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                updateSalaryDisplay(data);
+            } else {
+                showAlert(data.error || 'Error loading salary data', 'danger');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('Connection error', 'danger');
+        }
+    }
+
+    function updateSalaryDisplay(data) {
+        const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+
+        // Update summary cards
+        document.getElementById('basicSalary').textContent = `₹${(data.basic_salary || 0).toFixed(2)}`;
+        document.getElementById('regularPay').textContent = `₹${(data.regular_pay || 0).toFixed(2)}`;
+        document.getElementById('overtimePay').textContent = `₹${(data.overtime_pay || 0).toFixed(2)}`;
+        document.getElementById('deductions').textContent = `₹${(data.deductions || 0).toFixed(2)}`;
+        document.getElementById('netSalary').textContent = `₹${(data.net_salary || 0).toFixed(2)}`;
+
+        // Update slip header
+        document.getElementById('slipMonth').textContent = `${monthNames[data.month]} ${data.year}`;
+        document.getElementById('employeeName').textContent = userName;
+        document.getElementById('employeeId').textContent = `ID: ${userId}`;
+
+        // Update slip details
+        document.getElementById('slip_basic').textContent = `₹${(data.basic_salary || 0).toFixed(2)}`;
+        document.getElementById('slip_regular').textContent = `₹${(data.regular_pay || 0).toFixed(2)}`;
+        document.getElementById('slip_overtime').textContent = `₹${(data.overtime_pay || 0).toFixed(2)}`;
+        document.getElementById('slip_total_earnings').textContent = `₹${((data.basic_salary || 0) + (data.regular_pay || 0) + (data.overtime_pay || 0)).toFixed(2)}`;
+        document.getElementById('slip_deductions').textContent = `₹${(data.deductions || 0).toFixed(2)}`;
+
+        document.getElementById('slip_working_days').textContent = data.working_days || 0;
+        document.getElementById('slip_present_days').textContent = data.present_days || 0;
+        document.getElementById('slip_leaves').textContent = data.leaves_taken || 0;
+        document.getElementById('slip_total_hours').textContent = (data.total_hours || 0).toFixed(1);
+        document.getElementById('slip_overtime_hours').textContent = (data.overtime_hours || 0).toFixed(1);
+        document.getElementById('slip_net_salary').textContent = `₹${(data.net_salary || 0).toFixed(2)}`;
+    }
+
+
+
+    // Load data on page load
+    loadSalary();
+    loadSalaryHistory();
+</script>
+{% endblock %}

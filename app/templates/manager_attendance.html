@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Team Attendance - Manager - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        font-size: 2rem;
+        color: #333;
+        margin: 0;
+    }
+
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #666;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .btn-filter {
+        background: #667eea;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-filter:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+    }
+
+    .attendance-table-wrapper {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .attendance-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .attendance-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        font-size: 0.95rem;
+    }
+
+    .attendance-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f0f0f0;
+        color: #666;
+    }
+
+    .attendance-table tbody tr:hover {
+        background: #f9f9f9;
+    }
+
+    .employee-name {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .stat-number {
+        font-weight: 600;
+        color: #667eea;
+        font-size: 1.1rem;
+    }
+
+    .hours-number {
+        background: #e8eaf6;
+        padding: 0.3rem 0.6rem;
+        border-radius: 5px;
+        color: #667eea;
+    }
+
+    .status-badge {
+        padding: 0.3rem 0.6rem;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge-present {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-absent {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #999;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .monthly-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        text-align: center;
+        border-top: 4px solid #667eea;
+    }
+
+    .stat-card h3 {
+        color: #999;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .stat-card .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .filter-section {
+            flex-direction: column;
+        }
+
+        .filter-group {
+            min-width: 100%;
+        }
+
+        .btn-filter {
+            width: 100%;
+        }
+
+        .attendance-table {
+            font-size: 0.85rem;
+        }
+
+        .attendance-table th,
+        .attendance-table td {
+            padding: 0.7rem 0.5rem;
+        }
+
+        .monthly-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Team Attendance</h1>
+    <a href="/manager-dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section">
+    <div class="filter-group">
+        <label for="monthFilter">Month</label>
+        <select id="monthFilter">
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="yearFilter">Year</label>
+        <input type="number" id="yearFilter" min="2020" max="2100">
+    </div>
+    <button class="btn-filter" onclick="filterAttendance()">📊 Load Attendance</button>
+</div>
+
+<!-- Monthly Stats -->
+<div class="monthly-stats" id="monthlyStats"></div>
+
+<!-- Attendance Table -->
+<div class="attendance-table-wrapper">
+    <table class="attendance-table">
+        <thead>
+            <tr>
+                <th>Employee Name</th>
+                <th>Designation</th>
+                <th>Present Days</th>
+                <th>Absent Days</th>
+                <th>Total Hours</th>
+            </tr>
+        </thead>
+        <tbody id="attendanceTableBody">
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const managerId = localStorage.getItem('user_id');
+    const userRole = localStorage.getItem('user_role');
+
+    // Verify manager role
+    if (userRole !== 'manager') {
+        window.location.href = '/login';
+    }
+
+    // Initialize month and year
+    const today = new Date();
+    document.getElementById('monthFilter').value = today.getMonth() + 1;
+    document.getElementById('yearFilter').value = today.getFullYear();
+
+    // Load attendance on page load
+    filterAttendance();
+
+    // Filter attendance
+    async function filterAttendance() {
+        const month = document.getElementById('monthFilter').value;
+        const year = document.getElementById('yearFilter').value;
+
+        try {
+            const response = await fetch(
+                `/api/manager/team-attendance/${managerId}?month=${month}&year=${year}`
+            );
+            const data = await response.json();
+
+            // Display monthly stats
+            displayMonthlyStats(data.team_attendance);
+
+            // Display table
+            displayAttendanceTable(data.team_attendance);
+        } catch (error) {
+            console.error('Error loading attendance:', error);
+            showAlert('Error loading attendance data', 'danger');
+        }
+    }
+
+    // Display monthly stats
+    function displayMonthlyStats(teamData) {
+        const container = document.getElementById('monthlyStats');
+
+        const totalPresent = teamData.reduce((sum, emp) => sum + emp.present_days, 0);
+        const totalAbsent = teamData.reduce((sum, emp) => sum + emp.absent_days, 0);
+        const totalHours = teamData.reduce((sum, emp) => sum + emp.total_hours, 0);
+
+        container.innerHTML = `
+            <div class="stat-card">
+                <h3>Total Present Days</h3>
+                <div class="value">${totalPresent}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Absent Days</h3>
+                <div class="value">${totalAbsent}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Team Hours Worked</h3>
+                <div class="value">${totalHours.toFixed(1)}</div>
+            </div>
+        `;
+    }
+
+    // Display attendance table
+    function displayAttendanceTable(teamData) {
+        const tbody = document.getElementById('attendanceTableBody');
+
+        if (teamData.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem;">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <div>No attendance data available</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = teamData.map(emp => `
+            <tr>
+                <td><span class="employee-name">${emp.name}</span></td>
+                <td>${emp.designation || '-'}</td>
+                <td><span class="stat-number">${emp.present_days}</span></td>
+                <td><span class="stat-number" style="color: #dc3545;">${emp.absent_days}</span></td>
+                <td><span class="hours-number">${emp.total_hours.toFixed(1)} hrs</span></td>
+            </tr>
+        `).join('');
+    }
+</script>
+{% endblock %}

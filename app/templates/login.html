@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .login-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .login-card h2 {
+        text-align: center;
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+
+    .login-card p {
+        text-align: center;
+        color: #999;
+        margin-bottom: 2rem;
+        font-size: 0.9rem;
+    }
+
+    .form-group label {
+        color: #333;
+    }
+
+    .btn-login {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.1rem;
+        margin-top: 1rem;
+    }
+
+    .divider {
+        text-align: center;
+        margin: 2rem 0;
+        color: #999;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <h2>Payroll System</h2>
+        <p>User Login</p>
+
+        {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+
+            <button type="submit" class="btn btn-login">Login</button>
+        </form>
+
+        <div class="divider">
+            <p>Only authorized employees can login</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Store user data
+                localStorage.setItem('user_id', data.user_id);
+                localStorage.setItem('user_name', data.name);
+                localStorage.setItem('user_email', data.email);
+                localStorage.setItem('user_role', data.role);
+                localStorage.setItem('user_department', data.department || '');
+                
+                // Route based on role
+                if (data.role === 'manager') {
+                    window.location.href = '/manager-dashboard';
+                } else {
+                    window.location.href = '/dashboard';
+                }
+            } else {
+                showAlert(data.error || 'Login failed', 'danger');
+            }
+        } catch (error) {
+            showAlert('Connection error. Please try again.', 'danger');
+        }
+    });
+</script>
+{% endblock %}

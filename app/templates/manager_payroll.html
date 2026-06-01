@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block title %}Payroll Reports - Manager - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        font-size: 2rem;
+        color: #333;
+        margin: 0;
+    }
+
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #666;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-filter {
+        background: #667eea;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-filter:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+    }
+
+    .btn-download {
+        background: #28a745;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-download:hover {
+        background: #218838;
+        transform: translateY(-2px);
+    }
+
+    .payroll-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .summary-card h3 {
+        color: #999;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .summary-card .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .payroll-table-wrapper {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .payroll-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .payroll-table thead {
+        background: #f8f9fa;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .payroll-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        font-size: 0.9rem;
+    }
+
+    .payroll-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f0f0f0;
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    .payroll-table tbody tr:hover {
+        background: #f9f9f9;
+    }
+
+    .employee-cell {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .amount {
+        text-align: right;
+        font-weight: 600;
+        color: #667eea;
+    }
+
+    .total-row {
+        background: #f0f0f0;
+        font-weight: 600;
+    }
+
+    .total-row td {
+        border-top: 2px solid #ddd;
+        border-bottom: 2px solid #ddd;
+        color: #333;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #999;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .filter-section {
+            flex-direction: column;
+        }
+
+        .filter-group {
+            min-width: 100%;
+        }
+
+        .action-buttons {
+            width: 100%;
+            flex-direction: column;
+        }
+
+        .btn-filter, .btn-download {
+            width: 100%;
+        }
+
+        .payroll-table {
+            font-size: 0.85rem;
+        }
+
+        .payroll-table th,
+        .payroll-table td {
+            padding: 0.7rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Payroll Reports</h1>
+    <a href="/manager-dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section">
+    <div class="filter-group">
+        <label for="monthFilter">Month</label>
+        <select id="monthFilter">
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="yearFilter">Year</label>
+        <input type="number" id="yearFilter" min="2020" max="2100">
+    </div>
+    <div class="action-buttons">
+        <button class="btn-filter" onclick="generatePayrollReport()">💰 Generate Report</button>
+        <button class="btn-download" onclick="downloadPayroll()">⬇️ Download CSV</button>
+    </div>
+</div>
+
+<!-- Payroll Summary -->
+<div class="payroll-summary" id="payrollSummary"></div>
+
+<!-- Payroll Table -->
+<div class="payroll-table-wrapper">
+    <table class="payroll-table">
+        <thead>
+            <tr>
+                <th>Employee Name</th>
+                <th>Designation</th>
+                <th>Basic Salary</th>
+                <th>Regular Pay</th>
+                <th>OT Pay</th>
+                <th>Deductions</th>
+                <th>Net Salary</th>
+            </tr>
+        </thead>
+        <tbody id="payrollTableBody">
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const managerId = localStorage.getItem('user_id');
+    const userRole = localStorage.getItem('user_role');
+
+    let payrollData = null;
+
+    // Verify manager role
+    if (userRole !== 'manager') {
+        window.location.href = '/login';
+    }
+
+    // Initialize month and year
+    const today = new Date();
+    document.getElementById('monthFilter').value = today.getMonth() + 1;
+    document.getElementById('yearFilter').value = today.getFullYear();
+
+    // Load payroll on page load
+    generatePayrollReport();
+
+    // Generate payroll report
+    async function generatePayrollReport() {
+        const month = document.getElementById('monthFilter').value;
+        const year = document.getElementById('yearFilter').value;
+
+        try {
+            const response = await fetch(
+                `/api/manager/payroll-report/${managerId}?month=${month}&year=${year}`
+            );
+            const data = await response.json();
+
+            payrollData = data;
+
+            // Display summary
+            displayPayrollSummary(data);
+
+            // Display table
+            displayPayrollTable(data);
+        } catch (error) {
+            console.error('Error loading payroll:', error);
+            showAlert('Error loading payroll data', 'danger');
+        }
+    }
+
+    // Display payroll summary
+    function displayPayrollSummary(data) {
+        const container = document.getElementById('payrollSummary');
+
+        const totalBasic = data.payroll.reduce((sum, emp) => sum + emp.basic_salary, 0);
+        const totalDeductions = data.payroll.reduce((sum, emp) => sum + emp.deductions, 0);
+        const totalPayroll = data.total_payroll;
+        const employeeCount = data.payroll.length;
+
+        container.innerHTML = `
+            <div class="summary-card">
+                <h3>Total Employees</h3>
+                <div class="value">${employeeCount}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Total Basic Salary</h3>
+                <div class="value">₹${totalBasic.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Total Deductions</h3>
+                <div class="value">₹${totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>
+            <div class="summary-card">
+                <h3>Total Payroll</h3>
+                <div class="value">₹${totalPayroll.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>
+        `;
+    }
+
+    // Display payroll table
+    function displayPayrollTable(data) {
+        const tbody = document.getElementById('payrollTableBody');
+
+        if (data.payroll.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 2rem;">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">💰</div>
+                            <div>No payroll data available</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        // Add employee rows
+        data.payroll.forEach(emp => {
+            html += `
+                <tr>
+                    <td><span class="employee-cell">${emp.name}</span></td>
+                    <td>${emp.designation || '-'}</td>
+                    <td class="amount">₹${emp.basic_salary.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="amount">₹${emp.regular_pay.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="amount">₹${emp.overtime_pay.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="amount">₹${emp.deductions.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="amount" style="color: #28a745;">₹${emp.net_salary.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                </tr>
+            `;
+        });
+
+        // Add total row
+        const totalBasic = data.payroll.reduce((sum, emp) => sum + emp.basic_salary, 0);
+        const totalRegularPay = data.payroll.reduce((sum, emp) => sum + emp.regular_pay, 0);
+        const totalOTPay = data.payroll.reduce((sum, emp) => sum + emp.overtime_pay, 0);
+        const totalDeductions = data.payroll.reduce((sum, emp) => sum + emp.deductions, 0);
+
+        html += `
+            <tr class="total-row">
+                <td colspan="2">TOTAL</td>
+                <td class="amount">₹${totalBasic.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="amount">₹${totalRegularPay.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="amount">₹${totalOTPay.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="amount">₹${totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td class="amount" style="color: #28a745;">₹${data.total_payroll.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            </tr>
+        `;
+
+        tbody.innerHTML = html;
+    }
+
+    // Download payroll as CSV
+    function downloadPayroll() {
+        if (!payrollData || payrollData.payroll.length === 0) {
+            showAlert('No data to download', 'warning');
+            return;
+        }
+
+        const month = document.getElementById('monthFilter').value;
+        const year = document.getElementById('yearFilter').value;
+
+        const headers = ['Employee Name', 'Designation', 'Basic Salary', 'Regular Pay', 'OT Pay', 'Deductions', 'Net Salary'];
+        const rows = [];
+
+        // Add employee data
+        payrollData.payroll.forEach(emp => {
+            rows.push([
+                emp.name,
+                emp.designation || '-',
+                emp.basic_salary.toFixed(2),
+                emp.regular_pay.toFixed(2),
+                emp.overtime_pay.toFixed(2),
+                emp.deductions.toFixed(2),
+                emp.net_salary.toFixed(2)
+            ]);
+        });
+
+        // Add total row
+        const totalBasic = payrollData.payroll.reduce((sum, emp) => sum + emp.basic_salary, 0);
+        const totalRegularPay = payrollData.payroll.reduce((sum, emp) => sum + emp.regular_pay, 0);
+        const totalOTPay = payrollData.payroll.reduce((sum, emp) => sum + emp.overtime_pay, 0);
+        const totalDeductions = payrollData.payroll.reduce((sum, emp) => sum + emp.deductions, 0);
+
+        rows.push([
+            'TOTAL',
+            '',
+            totalBasic.toFixed(2),
+            totalRegularPay.toFixed(2),
+            totalOTPay.toFixed(2),
+            totalDeductions.toFixed(2),
+            payrollData.total_payroll.toFixed(2)
+        ]);
+
+        // Create CSV content
+        let csv = 'Payroll Report\n';
+        csv += `Month: ${month}, Year: ${year}\n`;
+        csv += `Department: ${payrollData.department}\n\n`;
+        csv += headers.join(',') + '\n';
+        csv += rows.map(row => row.join(',')).join('\n');
+
+        // Download file
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `payroll_${month}_${year}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showAlert('Payroll report downloaded!', 'success');
+    }
+</script>
+{% endblock %}

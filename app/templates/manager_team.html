@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Team Details - Manager - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+        font-size: 2rem;
+        color: #333;
+        margin: 0;
+    }
+
+    .team-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .employee-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .employee-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+    }
+
+    .employee-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+    }
+
+    .employee-designation {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 0.9rem;
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        color: #999;
+        font-weight: 600;
+    }
+
+    .detail-value {
+        color: #333;
+        font-weight: 600;
+    }
+
+    .detail-value.salary {
+        color: #28a745;
+    }
+
+    .detail-value.hours {
+        color: #667eea;
+    }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 0.6rem;
+        background: #f9f9f9;
+        border-radius: 5px;
+    }
+
+    .stat-value {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: #999;
+        margin-top: 0.2rem;
+    }
+
+    .email-section {
+        background: #f0f0f0;
+        padding: 0.8rem;
+        border-radius: 5px;
+        margin: 0.6rem 0;
+        font-size: 0.85rem;
+    }
+
+    .email-label {
+        color: #999;
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+    }
+
+    .email-value {
+        color: #667eea;
+        word-break: break-all;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #999;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #666;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+        padding: 0.6rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .btn-filter {
+        background: #667eea;
+        color: white;
+        padding: 0.6rem 1.2rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-filter:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .team-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-section {
+            flex-direction: column;
+        }
+
+        .filter-group {
+            min-width: 100%;
+        }
+
+        .btn-filter {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Team Details</h1>
+    <a href="/manager-dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section">
+    <div class="filter-group">
+        <label for="monthFilter">Month</label>
+        <select id="monthFilter">
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+        </select>
+    </div>
+    <button class="btn-filter" onclick="loadTeamDetails()">📊 Load Details</button>
+</div>
+
+<!-- Team Grid -->
+<div class="team-grid" id="teamGrid"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const managerId = localStorage.getItem('user_id');
+    const userRole = localStorage.getItem('user_role');
+
+    // Verify manager role
+    if (userRole !== 'manager') {
+        window.location.href = '/login';
+    }
+
+    // Initialize month
+    const today = new Date();
+    document.getElementById('monthFilter').value = today.getMonth() + 1;
+
+    // Load team details on page load
+    loadTeamDetails();
+
+    // Load team details
+    async function loadTeamDetails() {
+        try {
+            const response = await fetch(`/api/manager/team-details/${managerId}`);
+            const teamData = await response.json();
+
+            displayTeamCards(teamData);
+        } catch (error) {
+            console.error('Error loading team details:', error);
+            showAlert('Error loading team details', 'danger');
+        }
+    }
+
+    // Display team cards
+    function displayTeamCards(teamData) {
+        const container = document.getElementById('teamGrid');
+
+        if (teamData.length === 0) {
+            container.innerHTML = `
+                <div style="grid-column: 1 / -1;">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <div>No team members found</div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = teamData.map(emp => `
+            <div class="employee-card">
+                <div class="card-header">
+                    <div class="employee-name">${emp.name}</div>
+                    <div class="employee-designation">${emp.designation || 'Employee'}</div>
+                </div>
+                <div class="card-body">
+                    <div class="email-section">
+                        <div class="email-label">📧 Email</div>
+                        <div class="email-value">${emp.email}</div>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">💼 Basic Salary</span>
+                        <span class="detail-value salary">₹${emp.basic_salary.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">💵 Hourly Rate</span>
+                        <span class="detail-value">₹${emp.hourly_rate.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">💰 Net Salary</span>
+                        <span class="detail-value salary">₹${emp.net_salary.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <div class="stat-value">${emp.present_days}</div>
+                                <div class="stat-label">Present Days</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${emp.total_hours.toFixed(1)}</div>
+                                <div class="stat-label">Hours Worked</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+</script>
+{% endblock %}

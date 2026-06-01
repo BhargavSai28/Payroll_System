@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block title %}Leave Application - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .leave-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .leave-header {
+        color: white;
+        margin-top: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .leave-form-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .info-box {
+        background: #f0f8ff;
+        border-left: 4px solid #667eea;
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+    }
+
+    .info-box strong {
+        color: #667eea;
+    }
+
+    .days-display {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 5px;
+        text-align: center;
+        margin-top: 1rem;
+    }
+
+    .days-display .label {
+        color: #666;
+        font-size: 0.9rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .days-display .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .button-group button {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .leave-type-info {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 5px;
+        font-size: 0.9rem;
+    }
+
+    .leave-type-info p {
+        margin: 0.5rem 0;
+    }
+
+    .applied-leaves {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .leave-record {
+        border-left: 4px solid #667eea;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+
+    .leave-record h4 {
+        margin: 0 0 0.5rem 0;
+        color: #333;
+    }
+
+    .leave-record p {
+        margin: 0.3rem 0;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .leave-record .badge {
+        display: inline-block;
+        margin-top: 0.5rem;
+    }
+
+    .leave-record.approved {
+        border-left-color: #28a745;
+        background: #f0f8f5;
+    }
+
+    .leave-record.rejected {
+        border-left-color: #dc3545;
+        background: #fdf8f8;
+    }
+
+    .leave-record.pending {
+        border-left-color: #ffc107;
+        background: #fffef5;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        color: #333;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="leave-container">
+    <div class="leave-header">
+        <h2>Leave Application</h2>
+        <p>Apply for leave from work</p>
+    </div>
+
+    <!-- Leave Application Form -->
+    <div class="leave-form-card">
+        <h3 class="section-title">New Leave Request</h3>
+
+        <div class="info-box">
+            <strong>📋 Note:</strong> The number of days will be automatically calculated based on your from date and to date. Please fill in all required fields.
+        </div>
+
+        <form id="leaveForm" onsubmit="handleLeaveApplication(event)">
+            <!-- Leave Type Selection -->
+            <div class="form-group">
+                <label for="leaveType">Leave Type <span style="color: red;">*</span></label>
+                <select id="leaveType" required onchange="updateLeaveTypeInfo()">
+                    <option value="">-- Select Leave Type --</option>
+                    <option value="sick">Sick Leave</option>
+                    <option value="casual">Casual Leave</option>
+                    <option value="maternity">bevarment Leave</option>
+                </select>
+            </div>
+
+            <!-- Leave Type Information -->
+            <div class="leave-type-info" id="leaveTypeInfo" style="display: none;">
+                <p id="leaveTypeDescription"></p>
+            </div>
+
+            <!-- Date Selection Row -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="fromDate">From Date <span style="color: red;">*</span></label>
+                    <input type="date" id="fromDate" required onchange="calculateDays()">
+                </div>
+
+                <div class="form-group">
+                    <label for="toDate">To Date <span style="color: red;">*</span></label>
+                    <input type="date" id="toDate" required onchange="calculateDays()">
+                </div>
+            </div>
+
+            <!-- Days Calculation Display -->
+            <div class="days-display">
+                <span class="label">Number of Days</span>
+                <div class="value" id="daysCount">0</div>
+                <input type="hidden" id="noDays" name="noDays" value="0">
+            </div>
+
+            <!-- Reason for Leave -->
+            <div class="form-group">
+                <label for="reason">Reason for Leave <span style="color: red;">*</span></label>
+                <textarea id="reason" placeholder="Please provide a brief reason for your leave request..." required></textarea>
+            </div>
+
+            <!-- Status (Hidden - Set to Pending) -->
+            <input type="hidden" id="status" value="pending">
+
+            <!-- Submit Buttons -->
+            <div class="button-group">
+                <button type="submit" class="btn" style="flex: 1;">📤 Submit Leave Request</button>
+                <button type="reset" class="btn btn-secondary" style="flex: 1;">Clear Form</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Applied Leaves Section -->
+    <div class="applied-leaves">
+        <h3 class="section-title">Your Leave Requests</h3>
+        <div id="leavesList">
+            <p style="text-align: center; color: #999;">Loading your leave requests...</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const userId = localStorage.getItem('user_id');
+
+    if (!userId) {
+        window.location.href = '/login';
+    }
+
+    // Leave type descriptions
+    const leaveTypeDescriptions = {
+        'sick': '🏥 Sick Leave - For health-related absences. Requires medical certificate for leaves exceeding 3 days.',
+        'casual': '🌴 Casual Leave - General personal reasons. Maximum 12 days per year.',
+        'earned': '⭐ Earned Leave - Accrued annually based on service. 1.75 days per month.',
+        'unpaid': '💼 Unpaid Leave - Leave without pay. Requires manager approval.',
+        'maternity': '👶 Maternity Leave - 6 months paid leave for female employees.',
+        'paternity': '👨‍👧 Paternity Leave - 15 days paid leave for male employees.',
+        'marriage': '💍 Marriage Leave - 5 days leave for marriage purposes.',
+        'other': '📝 Other - Please specify in the reason field.'
+    };
+
+    function updateLeaveTypeInfo() {
+        const leaveType = document.getElementById('leaveType').value;
+        const infoDiv = document.getElementById('leaveTypeInfo');
+        const descriptionP = document.getElementById('leaveTypeDescription');
+
+        if (leaveType && leaveTypeDescriptions[leaveType]) {
+            descriptionP.textContent = leaveTypeDescriptions[leaveType];
+            infoDiv.style.display = 'block';
+        } else {
+            infoDiv.style.display = 'none';
+        }
+    }
+
+    function calculateDays() {
+        const fromDate = document.getElementById('fromDate').value;
+        const toDate = document.getElementById('toDate').value;
+
+        if (!fromDate || !toDate) {
+            document.getElementById('daysCount').textContent = '0';
+            document.getElementById('noDays').value = '0';
+            return;
+        }
+
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+
+        // Check if dates are valid
+        if (from > to) {
+            showAlert('To date must be after from date', 'danger');
+            document.getElementById('toDate').value = '';
+            return;
+        }
+
+        // Calculate days (inclusive of both dates)
+        const diffTime = Math.abs(to - from);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+        document.getElementById('daysCount').textContent = diffDays;
+        document.getElementById('noDays').value = diffDays;
+    }
+
+    async function handleLeaveApplication(event) {
+        event.preventDefault();
+
+        const leaveType = document.getElementById('leaveType').value;
+        const fromDate = document.getElementById('fromDate').value;
+        const toDate = document.getElementById('toDate').value;
+        const noDays = parseInt(document.getElementById('noDays').value);
+        const reason = document.getElementById('reason').value;
+        const status = document.getElementById('status').value;
+
+        // Validate inputs
+        if (!leaveType || !fromDate || !toDate || noDays === 0 || !reason) {
+            showAlert('Please fill in all required fields', 'danger');
+            return;
+        }
+
+        try {
+            const response = await fetch('/user/applyLeave', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_id: parseInt(userId),
+                    leave_type: leaveType,
+                    from_date: fromDate,
+                    to_date: toDate,
+                    days: noDays,
+                    reason: reason,
+                    status: status
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('✓ Leave application submitted successfully!', 'success');
+                document.getElementById('leaveForm').reset();
+                document.getElementById('daysCount').textContent = '0';
+                document.getElementById('noDays').value = '0';
+                document.getElementById('leaveTypeInfo').style.display = 'none';
+                
+                // Reload leave list
+                setTimeout(loadLeaveRequests, 1000);
+            } else {
+                showAlert(data.error || 'Failed to submit leave application', 'danger');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('Connection error. Please try again.', 'danger');
+        }
+    }
+
+    async function loadLeaveRequests() {
+        try {
+            const response = await fetch(`/user/viewAttendance?user_id=${userId}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                // Fetch from LeaveRequest table via API
+                displayLeaveRequests(data);
+            }
+        } catch (error) {
+            console.error('Error loading leaves:', error);
+            document.getElementById('leavesList').innerHTML = '<p style="color: red;">Error loading leave requests</p>';
+        }
+    }
+
+    function displayLeaveRequests(leaveRecords) {
+        const leavesList = document.getElementById('leavesList');
+
+        if (!leaveRecords || leaveRecords.length === 0) {
+            leavesList.innerHTML = '<p style="text-align: center; color: #999;">No leave requests found</p>';
+            return;
+        }
+
+        let html = '';
+        leaveRecords.forEach(leave => {
+            const statusClass = leave.status ? leave.status.toLowerCase() : 'pending';
+            const statusBadge = getStatusBadge(statusClass);
+            const leaveTypeLabel = formatLeaveType(leave.leave_type);
+
+            html += `
+                <div class="leave-record ${statusClass}">
+                    <h4>${leaveTypeLabel}</h4>
+                    <p><strong>Duration:</strong> ${leave.from_date} to ${leave.to_date} (${leave.days} days)</p>
+                    <p><strong>Reason:</strong> ${leave.reason}</p>
+                    <p><strong>Applied on:</strong> ${new Date(leave.applied_on).toLocaleDateString()}</p>
+                    ${statusBadge}
+                </div>
+            `;
+        });
+
+        leavesList.innerHTML = html;
+    }
+
+    function getStatusBadge(status) {
+        const statusMap = {
+            'approved': '<span class="badge badge-success">✓ Approved</span>',
+            'rejected': '<span class="badge badge-danger">✗ Rejected</span>',
+            'pending': '<span class="badge badge-warning">⏳ Pending Approval</span>'
+        };
+        return statusMap[status] || `<span class="badge badge-info">${status}</span>`;
+    }
+
+    function formatLeaveType(type) {
+        const typeMap = {
+            'sick': '🏥 Sick Leave',
+            'casual': '🌴 Casual Leave',
+            'earned': '⭐ Earned Leave',
+            'unpaid': '💼 Unpaid Leave',
+            'maternity': '👶 Maternity Leave',
+            'paternity': '👨‍👧 Paternity Leave',
+            'marriage': '💍 Marriage Leave',
+            'other': '📝 Other'
+        };
+        return typeMap[type] || type;
+    }
+
+    // Load leave requests on page load
+    loadLeaveRequests();
+</script>
+{% endblock %}

@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - Payroll Management System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+
+    .filter-section .form-group {
+        margin-bottom: 0;
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-section .form-group label {
+        margin-bottom: 0.3rem;
+    }
+
+    .filter-section button {
+        padding: 0.75rem 1.5rem;
+    }
+
+    .attendance-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .attendance-stats .stat-card {
+        border-left: 4px solid #667eea;
+    }
+
+    .attendance-stats .stat-card.present {
+        border-left-color: #28a745;
+    }
+
+    .attendance-stats .stat-card.absent {
+        border-left-color: #dc3545;
+    }
+
+    .attendance-stats .stat-card.leave {
+        border-left-color: #ffc107;
+    }
+
+    .calendar-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .calendar {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        gap: 1rem;
+    }
+
+    .calendar-header h3 {
+        margin: 0;
+    }
+
+    .calendar-header button {
+        background: #667eea;
+        color: white;
+        border: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+
+    .weekday {
+        text-align: center;
+        font-weight: 600;
+        color: #667eea;
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .dates {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+    }
+
+    .date-cell {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border: 1px solid #eee;
+        transition: all 0.3s;
+    }
+
+    .date-cell:hover {
+        transform: scale(1.05);
+    }
+
+    .date-cell.other-month {
+        color: #ccc;
+    }
+
+    .date-cell.present {
+        background: #d4edda;
+        color: #155724;
+        border-color: #28a745;
+    }
+
+    .date-cell.absent {
+        background: #f8d7da;
+        color: #721c24;
+        border-color: #dc3545;
+    }
+
+    .date-cell.leave {
+        background: #fff3cd;
+        color: #856404;
+        border-color: #ffc107;
+    }
+
+    .date-cell.today {
+        border: 2px solid #667eea;
+        font-weight: bold;
+    }
+
+    .legend {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.85rem;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .legend-box {
+        width: 15px;
+        height: 15px;
+        border-radius: 3px;
+    }
+
+    .monthly-summary {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .summary-item {
+        text-align: center;
+    }
+
+    .summary-item label {
+        display: block;
+        color: #999;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+
+    .summary-item .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 style="color: white; margin-top: 1rem;">Attendance Records</h2>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <div class="form-group">
+            <label for="monthFilter">Month</label>
+            <select id="monthFilter" onchange="loadAttendance()">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5" selected>June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="yearFilter">Year</label>
+            <select id="yearFilter" onchange="loadAttendance()">
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026" selected>2026</option>
+            </select>
+        </div>
+
+        <button class="btn btn-secondary" onclick="downloadAttendance()">📥 Download CSV</button>
+    </div>
+
+    <!-- Attendance Stats -->
+    <div class="attendance-stats">
+        <div class="stat-card present">
+            <div class="stat-label">Present Days</div>
+            <div class="stat-value" id="presentCount">0</div>
+        </div>
+
+        <div class="stat-card absent">
+            <div class="stat-label">Absent Days</div>
+            <div class="stat-value" id="absentCount">0</div>
+        </div>
+
+        <div class="stat-card leave">
+            <div class="stat-label">On Leave</div>
+            <div class="stat-value" id="leaveCount">0</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-label">Total Hours Worked</div>
+            <div class="stat-value" id="totalHours">0</div>
+        </div>
+    </div>
+
+    <!-- Calendar View -->
+    <div class="calendar-container">
+        <div class="calendar" id="calendarContainer">
+            <!-- Calendar will be generated here -->
+        </div>
+    </div>
+
+    <!-- Monthly Summary -->
+    <div class="monthly-summary">
+        <h3 class="section-title">Monthly Summary</h3>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <label>Working Days</label>
+                <div class="value" id="workingDays">0</div>
+            </div>
+            <div class="summary-item">
+                <label>Present Days</label>
+                <div class="value" id="presentDays">0</div>
+            </div>
+            <div class="summary-item">
+                <label>Absent Days</label>
+                <div class="value" id="absentDays">0</div>
+            </div>
+            <div class="summary-item">
+                <label>Leaves Taken</label>
+                <div class="value" id="leavesDays">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Table -->
+    <div class="card" style="margin-top: 2rem;">
+        <h3 class="section-title">Detailed Attendance</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Hours Worked</th>
+                    <th>Regular Hours</th>
+                    <th>Overtime Hours</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="attendanceTable">
+                <tr>
+                    <td colspan="8" style="text-align: center; color: #999;">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const userId = localStorage.getItem('user_id');
+
+    if (!userId) {
+        window.location.href = '/login';
+    }
+
+    function getDaysInMonth(month, year) {
+        return new Date(year, month + 1, 0).getDate();
+    }
+
+    function getFirstDayOfMonth(month, year) {
+        return new Date(year, month, 1).getDay();
+    }
+
+    function generateCalendar(month, year, attendanceData) {
+        const daysInMonth = getDaysInMonth(month, year);
+        const firstDay = getFirstDayOfMonth(month, year);
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+
+        let html = `
+            <div class="calendar-header">
+                <h3>${monthNames[month]} ${year}</h3>
+            </div>
+
+            <div class="weekdays">
+                <div class="weekday">Sun</div>
+                <div class="weekday">Mon</div>
+                <div class="weekday">Tue</div>
+                <div class="weekday">Wed</div>
+                <div class="weekday">Thu</div>
+                <div class="weekday">Fri</div>
+                <div class="weekday">Sat</div>
+            </div>
+
+            <div class="dates">
+        `;
+
+        // Previous month's dates
+        const prevMonthDays = getDaysInMonth(month - 1, year);
+        for (let i = firstDay - 1; i >= 0; i--) {
+            html += `<div class="date-cell other-month">${prevMonthDays - i}</div>`;
+        }
+
+        // Current month's dates
+        const today = new Date();
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const record = attendanceData.find(r => r.date === dateStr);
+            
+            let status = '';
+            if (record) {
+                if (record.status === 'present') {
+                    status = 'present';
+                } else if (record.status === 'absent') {
+                    status = 'absent';
+                } else if (record.status === 'leave') {
+                    status = 'leave';
+                }
+            }
+
+            const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+            const classes = `date-cell ${status} ${isToday ? 'today' : ''}`;
+
+            html += `<div class="${classes}" title="${dateStr}">${day}</div>`;
+        }
+
+        // Next month's dates
+        const totalCells = firstDay + daysInMonth;
+        const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+        for (let i = 1; i <= remainingCells; i++) {
+            html += `<div class="date-cell other-month">${i}</div>`;
+        }
+
+        html += `</div>`;
+
+        // Legend
+        html += `
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #d4edda;"></div>
+                    <span>Present</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #f8d7da;"></div>
+                    <span>Absent</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #fff3cd;"></div>
+                    <span>Leave</span>
+                </div>
+            </div>
+        `;
+
+        return html;
+    }
+
+    async function loadAttendance() {
+        const month = parseInt(document.getElementById('monthFilter').value) + 1;
+        const year = parseInt(document.getElementById('yearFilter').value);
+
+        try {
+            const response = await fetch(`/api/attendance/${userId}?month=${month}&year=${year}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                // Update stats
+                document.getElementById('presentCount').textContent = data.present_days || 0;
+                document.getElementById('absentCount').textContent = data.absent_days || 0;
+                document.getElementById('leaveCount').textContent = data.leave_days || 0;
+                document.getElementById('totalHours').textContent = (data.total_hours || 0).toFixed(1);
+
+                // Update monthly summary
+                document.getElementById('workingDays').textContent = data.working_days || 0;
+                document.getElementById('presentDays').textContent = data.present_days || 0;
+                document.getElementById('absentDays').textContent = data.absent_days || 0;
+                document.getElementById('leavesDays').textContent = data.leave_days || 0;
+
+                // Generate calendar
+                document.getElementById('calendarContainer').innerHTML = generateCalendar(month - 1, year, data.records || []);
+
+                // Update table
+                updateAttendanceTable(data.records || []);
+            }
+        } catch (error) {
+            console.error('Error loading attendance:', error);
+            showAlert('Error loading attendance data', 'danger');
+        }
+    }
+
+    function updateAttendanceTable(records) {
+        const tbody = document.getElementById('attendanceTable');
+        tbody.innerHTML = '';
+
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">No attendance records</td></tr>';
+            return;
+        }
+
+        records.forEach(record => {
+            const row = document.createElement('tr');
+            const date = new Date(record.date);
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            
+            const checkIn = record.clock_in ? new Date(record.clock_in).toLocaleTimeString() : '-';
+            const checkOut = record.clock_out ? new Date(record.clock_out).toLocaleTimeString() : '-';
+            
+            let statusBadge = '<span class="badge badge-danger">Absent</span>';
+            if (record.status === 'present') {
+                statusBadge = '<span class="badge badge-success">Present</span>';
+            } else if (record.status === 'leave') {
+                statusBadge = '<span class="badge badge-warning">Leave</span>';
+            }
+
+            row.innerHTML = `
+                <td>${date.toLocaleDateString()}</td>
+                <td>${days[date.getDay()]}</td>
+                <td>${checkIn}</td>
+                <td>${checkOut}</td>
+                <td>${(record.worked_hours || 0).toFixed(2)}</td>
+                <td>${(record.regular_hours || 0).toFixed(2)}</td>
+                <td>${(record.overtime_hours || 0).toFixed(2)}</td>
+                <td>${statusBadge}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+
+    // Load initial data
+    loadAttendance();
+</script>
+{% endblock %}
