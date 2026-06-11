@@ -258,7 +258,7 @@
         </div>
 
         <div class="salary-card net">
-            <label>Net Salary</label>
+            <label>Take Home Salary</label>
             <div class="amount" id="netSalary">₹0</div>
         </div>
     </div>
@@ -327,7 +327,7 @@
                     <span class="value" id="slip_overtime_hours">0</span>
                 </div>
                 <div class="slip-item total" style="background: #f0f8ff;">
-                    <label>Net Salary</label>
+                    <label>Take Home Salary</label>
                     <span class="value" id="slip_net_salary">₹0</span>
                 </div>
             </div>
@@ -352,7 +352,7 @@
                     <th>Regular Pay</th>
                     <th>Overtime Pay</th>
                     <th>Deductions</th>
-                    <th>Net Salary</th>
+                    <th>Take Home Salary</th>
                     <th>Present Days</th>
                     <th>Action</th>
                 </tr>
@@ -416,7 +416,7 @@
         document.getElementById('slip_basic').textContent = `₹${(data.basic_salary || 0).toFixed(2)}`;
         document.getElementById('slip_regular').textContent = `₹${(data.regular_pay || 0).toFixed(2)}`;
         document.getElementById('slip_overtime').textContent = `₹${(data.overtime_pay || 0).toFixed(2)}`;
-        document.getElementById('slip_total_earnings').textContent = `₹${((data.basic_salary || 0) + (data.regular_pay || 0) + (data.overtime_pay || 0)).toFixed(2)}`;
+        document.getElementById('slip_total_earnings').textContent = `₹${((data.regular_pay || 0) + (data.overtime_pay || 0)).toFixed(2)}`;
         document.getElementById('slip_deductions').textContent = `₹${(data.deductions || 0).toFixed(2)}`;
 
         document.getElementById('slip_working_days').textContent = data.working_days || 0;
@@ -427,6 +427,49 @@
         document.getElementById('slip_net_salary').textContent = `₹${(data.net_salary || 0).toFixed(2)}`;
     }
 
+
+
+    async function loadSalaryHistory() {
+        try {
+            const response = await fetch(`/api/salary/${userId}`);
+            const data = await response.json();
+
+            const tbody = document.getElementById('salaryHistory');
+            tbody.innerHTML = '';
+
+            if (Array.isArray(data) && data.length > 0) {
+                const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                                   'July', 'August', 'September', 'October', 'November', 'December'];
+
+                data.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${monthNames[record.month]}</td>
+                        <td>${record.year}</td>
+                        <td>₹${(record.basic_salary || 0).toFixed(2)}</td>
+                        <td>₹${(record.regular_pay || 0).toFixed(2)}</td>
+                        <td>₹${(record.overtime_pay || 0).toFixed(2)}</td>
+                        <td>₹${(record.deductions || 0).toFixed(2)}</td>
+                        <td>₹${(record.net_salary || 0).toFixed(2)}</td>
+                        <td>${record.present_days || 0}</td>
+                        <td><button class="btn btn-sm" onclick="viewPayslip(${record.month}, ${record.year})">View</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #999;">No salary records found</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error loading salary history:', error);
+            document.getElementById('salaryHistory').innerHTML = '<tr><td colspan="9" style="text-align: center; color: red;">Error loading data</td></tr>';
+        }
+    }
+
+    function viewPayslip(month, year) {
+        document.getElementById('salaryMonth').value = month;
+        document.getElementById('salaryYear').value = year;
+        loadSalary();
+    }
 
 
     // Load data on page load

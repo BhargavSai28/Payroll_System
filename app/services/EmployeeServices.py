@@ -219,20 +219,19 @@ class EmployeeServices:
         # Calculate working days and salary components
         working_days = present_days + total_leave_days
 
-        # Calculate daily salary based on days in month
+        # Calculate salary from the monthly basic amount:
+        # deductions come out of basic first, then LOP comes out of regular pay.
         monthly_salary = round(annual_salary / 12, 2)
-        daily_salary   = round(monthly_salary / days_in_month, 2) if days_in_month > 0 else 0
-        hourly_salary  = round(daily_salary / 8, 2) if daily_salary > 0 else 0
+        pf_deduction = round(monthly_salary * 0.12, 2)
+        salary_after_deductions = round(max(0, monthly_salary - pf_deduction), 2)
+        daily_salary = round(salary_after_deductions / days_in_month, 2) if days_in_month > 0 else 0
+        hourly_salary = round(daily_salary / 8, 2) if daily_salary > 0 else 0
 
-        # Calculate regular_pay: (days in month - unpaid leaves) * daily_salary
-        regular_working_days = days_in_month - unpaid_days
-        regular_pay      = round(daily_salary * regular_working_days, 2)
-        paid_leave_pay   = round(daily_salary * paid_days, 2)
-        unpaid_deduct    = round(daily_salary * unpaid_days, 2)
-        overtime_pay     = round(overtime_hours * hourly_salary * 1.5, 2) if hourly_salary > 0 else 0
-        pf_deduction     = round(monthly_salary * 0.12, 2)
-        total_deductions = round(pf_deduction + unpaid_deduct, 2)
-        net_salary       = round(regular_pay + paid_leave_pay + overtime_pay - total_deductions, 2)
+        loss_of_pay = round(daily_salary * unpaid_days, 2)
+        regular_pay = round(max(0, salary_after_deductions - loss_of_pay), 2)
+        overtime_pay = round(overtime_hours * hourly_salary * 1.5, 2) if hourly_salary > 0 else 0
+        total_deductions = pf_deduction
+        take_home_salary = round(regular_pay + overtime_pay, 2)
         
         existing = Salary.query.filter_by(user_id=user_id, month=month, year=year).first()
         if existing:
@@ -266,7 +265,7 @@ class EmployeeServices:
         sal.leaves_taken   = total_leave_days
         sal.total_hours    = total_hours
         sal.overtime_hours = overtime_hours
-        sal.net_salary     = net_salary
+        sal.net_salary     = take_home_salary
 
         db.session.commit()
 
@@ -279,6 +278,7 @@ class EmployeeServices:
             'salary_breakup': {
                 'annual_salary' : annual_salary,
                 'monthly_salary': monthly_salary,
+                'salary_after_deductions': salary_after_deductions,
                 'daily_salary'  : daily_salary,
                 'hourly_salary' : hourly_salary,
                 'days_in_month' : days_in_month
@@ -298,11 +298,11 @@ class EmployeeServices:
             },
             'earnings'      : {
                 'regular_pay'    : regular_pay,
-                'paid_leave_pay' : paid_leave_pay,
                 'overtime_pay'   : overtime_pay,
                 'pf_deduction'   : pf_deduction,
-                'unpaid_deduct'  : unpaid_deduct,
+                'loss_of_pay'    : loss_of_pay,
                 'total_deductions': total_deductions,
-                'net_salary'     : net_salary
+                'take_home_salary': take_home_salary,
+                'net_salary'     : take_home_salary
             }
         }), 200

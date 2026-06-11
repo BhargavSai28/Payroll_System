@@ -222,7 +222,7 @@
 {% block content %}
 <div class="page-header">
     <h1>Payroll Reports</h1>
-    <a href="/manager-dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+    <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
 </div>
 
 <!-- Filter Section -->
@@ -268,7 +268,7 @@
                 <th>Regular Pay</th>
                 <th>OT Pay</th>
                 <th>Deductions</th>
-                <th>Net Salary</th>
+                <th>Take Home Salary</th>
             </tr>
         </thead>
         <tbody id="payrollTableBody">
@@ -286,7 +286,7 @@
     let payrollData = null;
 
     // Verify manager role
-    if (userRole !== 'manager') {
+    if (!hasAdminRole(userRole)) {
         window.location.href = '/login';
     }
 
@@ -345,7 +345,7 @@
                 <div class="value">₹${totalDeductions.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
             </div>
             <div class="summary-card">
-                <h3>Total Payroll</h3>
+                <h3>Total Take Home</h3>
                 <div class="value">₹${totalPayroll.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
             </div>
         `;
@@ -416,7 +416,7 @@
         const month = document.getElementById('monthFilter').value;
         const year = document.getElementById('yearFilter').value;
 
-        const headers = ['Employee Name', 'Designation', 'Basic Salary', 'Regular Pay', 'OT Pay', 'Deductions', 'Net Salary'];
+        const headers = ['Employee Name', 'Designation', 'Basic Salary', 'Regular Pay', 'OT Pay', 'Deductions', 'Take Home Salary'];
         const rows = [];
 
         // Add employee data

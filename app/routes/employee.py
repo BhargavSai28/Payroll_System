@@ -3,6 +3,7 @@ from app import db
 from app.models import Attendance, User, LeaveRequest, Salary
 from datetime import datetime, date
 from app.services.EmployeeServices import EmployeeServices
+from app.auth import jwt_required
 
 # instantiate service
 userServices = EmployeeServices()
@@ -10,55 +11,35 @@ userServices = EmployeeServices()
 employee = Blueprint('employee', __name__)
 
 @employee.route('/checkIn', methods=['POST'])
-def check_in():
-    data = request.get_json() or {}
-
-    user_id = data.get('user_id') 
-    
-    user = User.query.filter_by(id=user_id).first()
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    return userServices.checkIn(user_id)
+@jwt_required
+def check_in(current_user):
+    return userServices.checkIn(current_user.id)
 
  
 @employee.route('/checkOut', methods=['POST'])
-def check_out():
-    data = request.get_json()
- 
-    user_id = data.get('user_id')
- 
-    if not user_id:
-        return jsonify({'error': 'user_id is required'}), 400
- 
-    user = User.query.filter_by(id=user_id).first()
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    return userServices.checkOut(user_id)
+@jwt_required
+def check_out(current_user):
+    return userServices.checkOut(current_user.id)
 
 
 @employee.route('/applyLeave', methods=['POST'])
-def apply_leave():
+@jwt_required
+def apply_leave(current_user):
     data = request.get_json()
  
-    user_id    = data.get('user_id')
     leave_type = data.get('leave_type')
     from_date  = data.get('from_date')
     to_date    = data.get('to_date')
     reason     = data.get('reason')
  
-    user1 = User.query.filter_by(id=user_id).first()
-    if not user1:
-        return jsonify({'error': 'User not found'}), 404
-    return userServices.ApplyLeave(user_id, from_date, to_date, reason, leave_type, user1)
+    return userServices.ApplyLeave(current_user.id, from_date, to_date, reason, leave_type, current_user)
 
 
  
 @employee.route('/viewAttendance', methods=['GET'])
-def view_attendance():
-    user_id = request.args.get('user_id')
- 
-    if not user_id:
-        return jsonify({'error': 'user_id is required as query param'}), 400
+@jwt_required
+def view_attendance(current_user):
+    user_id = current_user.id
     records = Attendance.query.filter_by(user_id=user_id).order_by(Attendance.date.desc()).all()
  
     if not records:
@@ -68,17 +49,18 @@ def view_attendance():
 
  
 @employee.route('/monthlySalary', methods=['POST'])
-def monthly_Salary():
+@jwt_required
+def monthly_Salary(current_user):
     data = request.get_json()
  
-    user_id = data.get('user_id')
+    user_id = current_user.id
     month   = data.get('month')
     year    = data.get('year')
     print(f"Received monthly salary request for user_id={user_id}, month={month}, year={year}")
     print(f"DEBUG: userServices type = {type(userServices)}")
     print(f"DEBUG: userServices.__class__.__module__ = {userServices.__class__.__module__}")
-    if not user_id or not month or not year:
-        return jsonify({'error': 'user_id, month and year are required'}), 400
+    if not month or not year:
+        return jsonify({'error': 'month and year are required'}), 400
  
     user = User.query.get(user_id)
     if not user:

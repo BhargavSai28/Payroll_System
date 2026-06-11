@@ -1,17 +1,27 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Payroll Management System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-{% block title %}Login - Payroll Management System{% endblock %}
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #333;
+        }
 
-{% block extra_css %}
-<style>
-    body {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-    }
-
-    .login-container {
+        .login-container {
         width: 100%;
         max-width: 400px;
     }
@@ -21,6 +31,7 @@
         padding: 2rem;
         border-radius: 10px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        border-top: 4px solid #667eea;
     }
 
     .login-card h2 {
@@ -38,6 +49,24 @@
 
     .form-group label {
         color: #333;
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
     }
 
     .btn-login {
@@ -45,88 +74,114 @@
         padding: 1rem;
         font-size: 1.1rem;
         margin-top: 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
     }
 
-    .divider {
-        text-align: center;
-        margin: 2rem 0;
-        color: #999;
-        font-size: 0.9rem;
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     }
-</style>
-{% endblock %}
 
-{% block content %}
-<div class="login-container">
-    <div class="login-card">
-        <h2>Payroll System</h2>
-        <p>User Login</p>
+        .alert {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+            border-left: 4px solid;
+        }
 
-        {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
-        {% endif %}
+        .alert-danger {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
 
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+        .alert-success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <h2>Payroll System</h2>
+            <p>User Login</p>
+
+            <div id="alertContainer"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+
+                <button type="submit" class="btn-login">Login</button>
+            </form>
+
+            <div class="divider">
+                <p>Only authorized employees can login</p>
             </div>
-
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter your password" required>
-            </div>
-
-            <button type="submit" class="btn btn-login">Login</button>
-        </form>
-
-        <div class="divider">
-            <p>Only authorized employees can login</p>
         </div>
     </div>
-</div>
 
-{% endblock %}
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
-{% block extra_js %}
-<script>
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
 
-        try {
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email, password })
-            });
+                const data = await response.json();
 
-            const data = await response.json();
-
-            if (response.ok) {
-                // Store user data
-                localStorage.setItem('user_id', data.user_id);
-                localStorage.setItem('user_name', data.name);
-                localStorage.setItem('user_email', data.email);
-                localStorage.setItem('user_role', data.role);
-                localStorage.setItem('user_department', data.department || '');
-                
-                // Route based on role
-                if (data.role === 'manager') {
-                    window.location.href = '/manager-dashboard';
-                } else {
+                if (response.ok) {
+                    // Store user data
+                    localStorage.setItem('user_id', data.user_id);
+                    localStorage.setItem('user_name', data.name);
+                    localStorage.setItem('user_email', data.email);
+                    localStorage.setItem('user_role', (data.role || data.role_name || 'employee').toLowerCase());
+                    localStorage.setItem('user_department', data.department || '');
+                    localStorage.setItem('access_token', data.access_token);
+                    
                     window.location.href = '/dashboard';
+                } else {
+                    showAlert(data.error || 'Login failed', 'danger');
                 }
-            } else {
-                showAlert(data.error || 'Login failed', 'danger');
+            } catch (error) {
+                showAlert('Connection error. Please try again.', 'danger');
             }
-        } catch (error) {
-            showAlert('Connection error. Please try again.', 'danger');
+        });
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alertDiv);
+            
+            setTimeout(() => alertDiv.remove(), 5000);
         }
-    });
-</script>
-{% endblock %}
+    </script>
+</body>
+</html>

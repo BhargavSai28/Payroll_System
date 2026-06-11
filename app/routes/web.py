@@ -25,11 +25,6 @@ def salary():
 def leave():
     return render_template('leave.html')
 
-# Manager Routes
-@web.route('/manager-dashboard', methods=['GET'])
-def manager_dashboard():
-    return render_template('manager_dashboard.html')
-
 @web.route('/manager-leave-requests', methods=['GET'])
 def manager_leave_requests():
     return render_template('manager_leave_requests.html')

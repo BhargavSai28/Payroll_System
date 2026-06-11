@@ -1,11 +1,13 @@
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, current_app
 from app import db
-from app.models import User, Attendance, LeaveRequest, Salary
+from app.models import User, Attendance, LeaveRequest, Salary, Role, UserRole
+from app.auth import (create_access_token, jwt_required, normalize_role, roles_required,
+                     get_user_primary_role, get_user_permissions, verify_password,
+                     create_user_session, close_user_session, audit_log)
 from datetime import datetime, date, timedelta
 from werkzeug.security import check_password_hash
-import csv
-from io import StringIO, BytesIO
-import json
+import jwt
+
 
 bp = Blueprint('main', __name__)
 
@@ -18,107 +20,21 @@ def parse_datetime(value):
         return None
 
 
-@bp.route('/users', methods=['POST'])
-def create_user():
-    data = request.get_json() or []
-
-    if not isinstance(data, list):
-        return jsonify({'error': 'Expected a list of users'}), 400
-
-    users = []
-
-    for item in data:
-        user = User(
-            id=item.get('id'),
-            name=item.get('name'),
-            email=item.get('email'),
-            password=item.get('password'),
-            role=item.get('role', 'employee'),
-            department=item.get('department'),
-            designation=item.get('designation'),
-            basic_salary=item.get('basic_salary', 0.0),
-            hourly_rate=item.get('hourly_rate', 150.0)
-        )
-        users.append(user)
-
-    db.session.add_all(users)
-    db.session.commit()
-
-    return jsonify({
-        'count': len(users),
-        'ids': [user.id for user in users]
-    }), 201
-
-
-@bp.route('/attendance', methods=['POST'])
-def create_attendance():
-    data = request.get_json() or {}
-    clock_in = parse_datetime(data.get('clock_in'))
-    clock_out = parse_datetime(data.get('clock_out'))
-
-    attendance = Attendance(
-        id=data.get('id'),
-        user_id=data.get('user_id'),
-        clock_in=clock_in,
-        clock_out=clock_out,
-        date=data.get('date'),
-        worked_hours=data.get('worked_hours'),
-        regular_hours=data.get('regular_hours'),
-        overtime_hours=data.get('overtime_hours')
+def employee_query():
+    return (
+        User.query
+        .join(UserRole, UserRole.user_id == User.id)
+        .join(Role, Role.role_id == UserRole.role_id)
+        .filter(Role.role_name == 'EMPLOYEE')
+        .distinct()
     )
-    db.session.add(attendance)
-    db.session.commit()
-    return jsonify({'id': attendance.id}), 201
 
 
-@bp.route('/leave_requests', methods=['POST'])
-def create_leave():
-    data = request.get_json() or {}
-    required = ['user_id', 'leave_type', 'from_date', 'to_date', 'reason']
-   
-    leave = LeaveRequest(
-        id=data.get('id'),
-        user_id=data.get('user_id'),
-        leave_type=data.get('leave_type'),
-        from_date=data.get('from_date'),
-        to_date=data.get('to_date'),
-        days=data.get('days'),
-        reason=data.get('reason'),
-        status=data.get('status', 'pending')
-    )
-    db.session.add(leave)
-    db.session.commit()
-    return jsonify({'id': leave.id}), 201
-
-
-@bp.route('/salary', methods=['POST'])
-def create_salary():
-    data = request.get_json() or {}
-    salary = Salary(
-        id=data.get('id'),
-        user_id=data.get('user_id'),
-        month=data.get('month'),
-        year=data.get('year'),
-        basic_salary=data.get('basic_salary'),
-        regular_pay=data.get('regular_pay'),
-        overtime_pay=data.get('overtime_pay'),
-        deductions=data.get('deductions'),
-        working_days=data.get('working_days'),
-        leaves_taken=data.get('leaves_taken'),
-        total_hours=data.get('total_hours'),
-        overtime_hours=data.get('overtime_hours'),
-        present_days=data.get('present_days', 0),
-        net_salary=data.get('net_salary', 0.0)
-    )
-    db.session.add(salary)
-    db.session.commit()
-    return jsonify({'id': salary.id}), 201
-
-
-# ============= FRONTEND =============
+# ============= LOGIN & AUTHENTICATION =============
 
 @bp.route('/login', methods=['POST'])
 def login():
+    """Enhanced login with session tracking"""
     data = request.get_json() or {}
     email = data.get('email')
     password = data.get('password')
@@ -128,21 +44,98 @@ def login():
 
     user = User.query.filter_by(email=email).first()
     
-    if not user or user.password != password:  # In production, use werkzeug.security.check_password_hash
+    password_ok = user and verify_password(user.password, password)
+    if not password_ok:
+        audit_log(None, 'LOGIN_FAILED', 'USER_AUTH', None, None, {'email': email})
         return jsonify({'error': 'Invalid email or password'}), 401
+
+    # Create session
+    session_id = create_user_session(user.id, request)
+    
+    # Get user role and permissions
+    role = get_user_primary_role(user.id)
+    permissions = get_user_permissions(user.id)
+    
+    # Create token with session
+    token = create_access_token(user, session_id)
+    
+    audit_log(user.id, 'LOGIN', 'USER_AUTH', user.id, None, {'session_id': session_id})
+    
+    role_name = role.role_name if role else 'EMPLOYEE'
 
     return jsonify({
         'user_id': user.id,
         'name': user.name,
         'email': user.email,
-        'role': user.role,
+        'role': role_name.lower(),
+        'role_name': role_name,
+        'permissions': permissions,
         'department': user.department,
+        'session_id': session_id,
+        'access_token': token,
+        'token_type': 'Bearer',
         'message': 'Login successful'
     }), 200
 
 
+@bp.route('/logout', methods=['POST'])
+@jwt_required
+def logout(current_user):
+    """Logout and close session"""
+    auth_header = request.headers.get('Authorization')
+    if auth_header:
+        try:
+            token = auth_header.split(' ')[1]
+            data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
+            session_id = data.get('session_id')
+            if session_id:
+                close_user_session(session_id)
+        except:
+            pass
+    
+    audit_log(current_user.id, 'LOGOUT', 'USER_AUTH', current_user.id, None, None)
+    
+    return jsonify({'message': 'Logout successful'}), 200
+
+
+@bp.route('/me', methods=['GET'])
+@jwt_required
+def me(current_user):
+    role = get_user_primary_role(current_user.id)
+    permissions = get_user_permissions(current_user.id)
+    
+    return jsonify({
+        'user_id': current_user.id,
+        'name': current_user.name,
+        'email': current_user.email,
+        'role_name': role.role_name if role else 'EMPLOYEE',
+        'permissions': permissions,
+        'department': current_user.department,
+        'designation': current_user.designation
+    }), 200
+
+
+@bp.route('/dashboard', methods=['GET'])
+@jwt_required
+def my_dashboard(current_user):
+    user_role = get_user_primary_role(current_user.id)
+    user_role_name = normalize_role(user_role.role_name if user_role else 'EMPLOYEE')
+    if user_role_name == 'ADMIN':
+        return _admin_dashboard(current_user)
+    return _employee_dashboard(current_user.id)
+
+
 @bp.route('/dashboard/<int:user_id>', methods=['GET'])
-def dashboard(user_id):
+@jwt_required
+def dashboard(current_user, user_id):
+    user_role = get_user_primary_role(current_user.id)
+    user_role_name = normalize_role(user_role.role_name if user_role else 'EMPLOYEE')
+    if user_role_name != 'ADMIN' and current_user.id != user_id:
+        return jsonify({'error': 'Forbidden'}), 403
+    return _employee_dashboard(user_id)
+
+
+def _employee_dashboard(user_id):
     user = User.query.get(user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -205,13 +198,42 @@ def dashboard(user_id):
 
 
 @bp.route('/attendance/<int:user_id>', methods=['GET'])
-def get_attendance(user_id):
+@jwt_required
+def get_attendance(current_user, user_id):
+    user_role = get_user_primary_role(current_user.id)
+    user_role_name = normalize_role(user_role.role_name if user_role else 'EMPLOYEE')
+    if user_role_name != 'ADMIN' and current_user.id != user_id:
+        return jsonify({'error': 'Forbidden'}), 403
     user = User.query.get(user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
-    month = request.args.get('month', type=int, default=date.today().month)
-    year = request.args.get('year', type=int, default=date.today().year)
+    month_arg = request.args.get('month', type=int)
+    year_arg = request.args.get('year', type=int)
+
+    if month_arg is None and year_arg is None:
+        salaries = Salary.query.filter_by(user_id=user_id).order_by(
+            Salary.year.desc(),
+            Salary.month.desc()
+        ).all()
+        return jsonify([{
+            'user_id': user_id,
+            'month': salary.month,
+            'year': salary.year,
+            'basic_salary': salary.basic_salary or 0,
+            'regular_pay': salary.regular_pay or 0,
+            'overtime_pay': salary.overtime_pay or 0,
+            'deductions': salary.deductions or 0,
+            'net_salary': salary.net_salary or 0,
+            'working_days': salary.working_days or 22,
+            'present_days': salary.present_days or 0,
+            'leaves_taken': salary.leaves_taken or 0,
+            'total_hours': salary.total_hours or 0,
+            'overtime_hours': salary.overtime_hours or 0
+        } for salary in salaries]), 200
+
+    month = month_arg or date.today().month
+    year = year_arg or date.today().year
 
     # Get all attendance for the month
     attendance_records = Attendance.query.filter(
@@ -258,7 +280,12 @@ def get_attendance(user_id):
 
 
 @bp.route('/salary/<int:user_id>', methods=['GET'])
-def get_salary(user_id):
+@jwt_required
+def get_salary(current_user, user_id):
+    user_role = get_user_primary_role(current_user.id)
+    user_role_name = normalize_role(user_role.role_name if user_role else 'EMPLOYEE')
+    if user_role_name != 'ADMIN' and current_user.id != user_id:
+        return jsonify({'error': 'Forbidden'}), 403
     user = User.query.get(user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -272,8 +299,29 @@ def get_salary(user_id):
         year=year
     ).first()
 
+    has_attendance = Attendance.query.filter(
+        Attendance.user_id == user_id,
+        db.func.EXTRACT('month', Attendance.date) == month,
+        db.func.EXTRACT('year', Attendance.date) == year
+    ).first()
+    has_approved_leave = LeaveRequest.query.filter(
+        LeaveRequest.user_id == user_id,
+        LeaveRequest.status == 'approved',
+        db.func.EXTRACT('month', LeaveRequest.from_date) == month,
+        db.func.EXTRACT('year', LeaveRequest.from_date) == year
+    ).first()
+
+    if has_attendance or has_approved_leave:
+        from app.services.EmployeeServices import EmployeeServices
+        EmployeeServices().monthlySalary(user_id, month, year)
+        salary = Salary.query.filter_by(
+            user_id=user_id,
+            month=month,
+            year=year
+        ).first()
+
     if not salary:
-        # Create default salary record if not exists
+        # Create default salary response if not enough payroll data exists yet.
         return jsonify({
             'user_id': user_id,
             'month': month,
@@ -307,17 +355,112 @@ def get_salary(user_id):
     }), 200
 
 
+@bp.route('/attendance/today/<int:user_id>', methods=['GET'])
+@jwt_required
+def get_today_attendance(current_user, user_id):
+    """Get today's attendance status"""
+    if current_user.id != user_id:
+        return jsonify({'error': 'Forbidden'}), 403
+    
+    today = date.today()
+    record = Attendance.query.filter_by(
+        user_id=user_id,
+        date=today
+    ).first()
+    
+    if not record:
+        return jsonify({'record': None}), 200
+    
+    return jsonify({
+        'record': {
+            'date': record.date.isoformat(),
+            'clock_in': record.clock_in.isoformat() if record.clock_in else None,
+            'clock_out': record.clock_out.isoformat() if record.clock_out else None,
+            'status': 'checked_out' if record.clock_out else 'checked_in'
+        }
+    }), 200
+
+
+@bp.route('/checkin', methods=['POST'])
+@jwt_required
+def api_checkin(current_user):
+    """Check-in endpoint"""
+    user_id = current_user.id
+    today = date.today()
+    
+    # Check if already checked in today
+    existing = Attendance.query.filter_by(user_id=user_id, date=today).first()
+    
+    if existing:
+        if existing.clock_in:
+            return jsonify({'error': 'Already checked in today'}), 400
+        # Update existing record
+        existing.clock_in = datetime.now()
+        db.session.commit()
+        return jsonify({'message': 'Check-in successful', 'clock_in': existing.clock_in.isoformat()}), 200
+    
+    # Create new attendance record
+    attendance = Attendance(
+        user_id=user_id,
+        date=today,
+        clock_in=datetime.now()
+    )
+    db.session.add(attendance)
+    db.session.commit()
+    
+    return jsonify({'message': 'Check-in successful', 'clock_in': attendance.clock_in.isoformat()}), 200
+
+
+@bp.route('/checkout', methods=['POST'])
+@jwt_required
+def api_checkout(current_user):
+    """Check-out endpoint"""
+    user_id = current_user.id
+    today = date.today()
+    
+    attendance = Attendance.query.filter_by(user_id=user_id, date=today).first()
+    
+    if not attendance:
+        return jsonify({'error': 'No check-in found for today'}), 404
+    
+    if attendance.clock_out:
+        return jsonify({'error': 'Already checked out today'}), 400
+    
+    attendance.clock_out = datetime.now()
+    
+    # Calculate worked hours
+    if attendance.clock_in:
+        worked_hours = (attendance.clock_out - attendance.clock_in).total_seconds() / 3600
+        attendance.worked_hours = round(worked_hours, 2)
+        
+        # Simple logic: hours up to 8 are regular, rest is overtime
+        if worked_hours <= 8:
+            attendance.regular_hours = round(worked_hours, 2)
+            attendance.overtime_hours = 0
+        else:
+            attendance.regular_hours = 8
+            attendance.overtime_hours = round(worked_hours - 8, 2)
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Check-out successful',
+        'clock_out': attendance.clock_out.isoformat(),
+        'worked_hours': attendance.worked_hours
+    }), 200
+
+
 # ============= MANAGER API ENDPOINTS =============
 
 @bp.route('/manager/dashboard/<int:manager_id>', methods=['GET'])
-def manager_dashboard(manager_id):
-    """Get manager dashboard stats - shows ALL users"""
-    manager = User.query.get(manager_id)
-    if not manager or manager.role != 'manager':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    # Get ALL users from users table
-    all_users = User.query.filter(User.role == 'employee').all()
+@roles_required('admin')
+def manager_dashboard(current_user, manager_id):
+    return _admin_dashboard(current_user)
+
+
+def _admin_dashboard(admin_user):
+    """Get admin dashboard stats - shows all employees"""
+    all_users = employee_query().all()
     
     team_count = len(all_users)
     
@@ -340,20 +483,19 @@ def manager_dashboard(manager_id):
         'team_count': team_count,
         'pending_leaves': len(pending_leaves),
         'today_present': today_present,
-        'manager_name': manager.name,
-        'department': manager.department
+        'manager_name': admin_user.name,
+        'admin_name': admin_user.name,
+        'department': admin_user.department
     }), 200
 
 
 @bp.route('/manager/leave-requests/<int:manager_id>', methods=['GET'])
-def get_leave_requests(manager_id):
-    """Get all leave requests from ALL employees"""
-    manager = User.query.get(manager_id)
-    if not manager or manager.role != 'manager':
-        return jsonify({'error': 'Unauthorized'}), 403
+@roles_required('admin')
+def get_leave_requests(current_user, manager_id):
+    """Get all leave requests from all employees"""
     
     # Get ALL employees
-    all_employees = User.query.filter(User.role == 'employee').all()
+    all_employees = employee_query().all()
     team_ids = [m.id for m in all_employees]
     
     status_filter = request.args.get('status', 'pending')
@@ -384,15 +526,9 @@ def get_leave_requests(manager_id):
 
 
 @bp.route('/manager/leave-request/<int:request_id>/approve', methods=['POST'])
-def approve_leave(request_id):
-    """Approve a leave request - manager can approve any employee leave"""
-    data = request.get_json() or {}
-    manager_id = data.get('manager_id')
-    
-    manager = User.query.get(manager_id)
-    if not manager or manager.role != 'manager':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
+@roles_required('admin')
+def approve_leave(current_user, request_id):
+    """Approve a leave request"""
     leave_request = LeaveRequest.query.get(request_id)
     if not leave_request:
         return jsonify({'error': 'Leave request not found'}), 404
@@ -408,23 +544,13 @@ def approve_leave(request_id):
 
 
 @bp.route('/manager/leave-request/<int:request_id>/reject', methods=['POST'])
-def reject_leave(request_id):
+@roles_required('admin')
+def reject_leave(current_user, request_id):
     """Reject a leave request"""
-    data = request.get_json() or {}
-    manager_id = data.get('manager_id')
-    
-    manager = User.query.get(manager_id)
-    if not manager or manager.role != 'manager':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     leave_request = LeaveRequest.query.get(request_id)
     if not leave_request:
         return jsonify({'error': 'Leave request not found'}), 404
-    
-    employee = User.query.get(leave_request.user_id)
-    if employee.department != manager.department:
-        return jsonify({'error': 'Cannot reject leaves from other departments'}), 403
-    
+
     leave_request.status = 'rejected'
     db.session.commit()
     
@@ -436,19 +562,13 @@ def reject_leave(request_id):
 
 
 @bp.route('/manager/team-attendance/<int:manager_id>', methods=['GET'])
-def get_team_attendance(manager_id):
+@roles_required('admin')
+def get_team_attendance(current_user, manager_id):
     """Get team attendance data"""
-    manager = User.query.get(manager_id)
-    if not manager or manager.role != 'manager':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     month = request.args.get('month', type=int, default=date.today().month)
     year = request.args.get('year', type=int, default=date.today().year)
     
-    team_members = User.query.filter_by(
-        department=manager.department,
-        role='employee'
-    ).all()
+    team_members = employee_query().all()
     
     team_data = []
     for member in team_members:
@@ -479,22 +599,34 @@ def get_team_attendance(manager_id):
 
 
 @bp.route('/manager/team-details/<int:manager_id>', methods=['GET'])
-def get_team_details(manager_id):
+@roles_required('admin')
+def get_team_details(current_user, manager_id):
     """Get all team member details"""
-    manager = User.query.get(manager_id)
-    if not manager or manager.role != 'manager':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    team_members = User.query.filter_by(
-        department=manager.department,
-        role='employee'
-    ).all()
+    team_members = employee_query().all()
     
     month = date.today().month
     year = date.today().year
     
     team_data = []
+    from app.services.EmployeeServices import EmployeeServices
+    salary_service = EmployeeServices()
+
     for member in team_members:
+        has_attendance = Attendance.query.filter(
+            Attendance.user_id == member.id,
+            db.func.EXTRACT('month', Attendance.date) == month,
+            db.func.EXTRACT('year', Attendance.date) == year
+        ).first()
+        has_approved_leave = LeaveRequest.query.filter(
+            LeaveRequest.user_id == member.id,
+            LeaveRequest.status == 'approved',
+            db.func.EXTRACT('month', LeaveRequest.from_date) == month,
+            db.func.EXTRACT('year', LeaveRequest.from_date) == year
+        ).first()
+
+        if has_attendance or has_approved_leave:
+            salary_service.monthlySalary(member.id, month, year)
+
         # Get salary info
         salary = Salary.query.filter_by(
             user_id=member.id,
@@ -528,24 +660,35 @@ def get_team_details(manager_id):
 
 
 @bp.route('/manager/payroll-report/<int:manager_id>', methods=['GET'])
-def get_payroll_report(manager_id):
+@roles_required('admin')
+def get_payroll_report(current_user, manager_id):
     """Generate payroll report for team"""
-    manager = User.query.get(manager_id)
-    if not manager or manager.role != 'manager':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
     month = request.args.get('month', type=int, default=date.today().month)
     year = request.args.get('year', type=int, default=date.today().year)
     
-    team_members = User.query.filter_by(
-        department=manager.department,
-        role='employee'
-    ).all()
+    team_members = employee_query().all()
     
     payroll_data = []
     total_payroll = 0
+    from app.services.EmployeeServices import EmployeeServices
+    salary_service = EmployeeServices()
     
     for member in team_members:
+        has_attendance = Attendance.query.filter(
+            Attendance.user_id == member.id,
+            db.func.EXTRACT('month', Attendance.date) == month,
+            db.func.EXTRACT('year', Attendance.date) == year
+        ).first()
+        has_approved_leave = LeaveRequest.query.filter(
+            LeaveRequest.user_id == member.id,
+            LeaveRequest.status == 'approved',
+            db.func.EXTRACT('month', LeaveRequest.from_date) == month,
+            db.func.EXTRACT('year', LeaveRequest.from_date) == year
+        ).first()
+
+        if has_attendance or has_approved_leave:
+            salary_service.monthlySalary(member.id, month, year)
+
         salary = Salary.query.filter_by(
             user_id=member.id,
             month=month,
@@ -570,7 +713,7 @@ def get_payroll_report(manager_id):
     return jsonify({
         'month': month,
         'year': year,
-        'department': manager.department,
+        'department': current_user.department,
         'payroll': payroll_data,
         'total_payroll': round(total_payroll, 2)
     }), 200

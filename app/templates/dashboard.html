@@ -71,7 +71,7 @@
     .stat-value {
         font-size: 2.5rem;
         font-weight: bold;
-        color: solid rgb(130, 198, 130);
+        color: rgb(130, 198, 130);
     }
 
     .stat-card.success .stat-value {
@@ -118,11 +118,37 @@
     .status-indicator.off {
         background: #dc3545;
     }
+
+    .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .chart-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .chart-card h3 {
+        color: #333;
+        font-size: 1.05rem;
+        margin-bottom: 1rem;
+    }
+
+    .chart-card canvas {
+        width: 100%;
+        height: 220px;
+        display: block;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container" id="employeeDashboard">
     <div class="dashboard-header" style="color: white; margin-top: 1rem;">
         <h2>Dashboard</h2>
         <div class="quick-actions">
@@ -157,6 +183,17 @@
             <div class="stat-label">Current Month Salary</div>
             <div class="stat-value" id="currentSalary">₹0</div>
             <div style="font-size: 0.85rem; color: #999; margin-top: 0.5rem;">Net salary</div>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h3>Recent Hours</h3>
+            <canvas id="employeeHoursChart" width="520" height="260"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Month Overview</h3>
+            <canvas id="employeeMonthChart" width="520" height="260"></canvas>
         </div>
     </div>
 
@@ -201,6 +238,56 @@
     </div>
 </div>
 
+<div class="container hidden" id="managerDashboard">
+    <div class="dashboard-header" style="color: white; margin-top: 1rem;">
+        <div>
+            <h2>Dashboard</h2>
+            <p>Welcome, <span id="managerName"></span></p>
+        </div>
+        <div class="quick-actions">
+            <button class="btn" onclick="openModal('checkinModal')"> Check In</button>
+            <button class="btn btn-danger" onclick="openModal('checkoutModal')"> Check Out</button>
+            <button class="btn btn-secondary" onclick="location.href='/manager-attendance'">View Team Attendance</button>
+            <button class="btn btn-secondary" onclick="location.href='/manager-leave-requests'">Approve Leave Requests</button>
+            <button class="btn btn-success" onclick="location.href='/manager-payroll'">View Employee Payroll Slip</button>
+            <button class="btn btn-secondary" onclick="location.href='/manager-team'">Team Details</button>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Employees</div>
+            <div class="stat-value" id="teamCount">0</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-label">Pending Leaves</div>
+            <div class="stat-value" id="pendingLeaves">0</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-label">Present Today</div>
+            <div class="stat-value" id="todayPresent">0</div>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h3>Team Snapshot</h3>
+            <canvas id="managerStatsChart" width="520" height="260"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Leave Queue</h3>
+            <canvas id="managerLeaveChart" width="520" height="260"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 class="section-title">Pending Leave Requests</h3>
+        <div id="pendingLeavesList">
+            <p style="text-align: center; color: #999;">Loading...</p>
+        </div>
+    </div>
+</div>
+
 <!-- Check-in Modal -->
 <div id="checkinModal" class="modal">
     <div class="modal-content">
@@ -241,15 +328,125 @@
 <script>
     const userId = localStorage.getItem('user_id');
     const userName = localStorage.getItem('user_name');
+    const userRole = localStorage.getItem('user_role');
 
-    if (!userId) {
+    if (!userId || !localStorage.getItem('access_token')) {
         window.location.href = '/login';
+    }
+
+    function clearCanvas(canvas) {
+        if (!canvas) return null;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return ctx;
+    }
+
+    function drawEmptyChart(canvasId, message) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = clearCanvas(canvas);
+        if (!ctx) return;
+        ctx.fillStyle = '#999';
+        ctx.font = '16px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+    }
+
+    function drawBarChart(canvasId, labels, values, color) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = clearCanvas(canvas);
+        if (!ctx) return;
+
+        if (!values.length || values.every(value => value === 0)) {
+            drawEmptyChart(canvasId, 'No chart data');
+            return;
+        }
+
+        const padding = 42;
+        const chartWidth = canvas.width - padding * 2;
+        const chartHeight = canvas.height - padding * 2;
+        const maxValue = Math.max(...values, 1);
+        const barGap = 14;
+        const barWidth = Math.max(18, (chartWidth - barGap * (values.length - 1)) / values.length);
+
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, padding + chartHeight);
+        ctx.lineTo(padding + chartWidth, padding + chartHeight);
+        ctx.stroke();
+
+        values.forEach((value, index) => {
+            const x = padding + index * (barWidth + barGap);
+            const height = Math.round((value / maxValue) * (chartHeight - 20));
+            const y = padding + chartHeight - height;
+
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, barWidth, height);
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText(String(value), x + barWidth / 2, y - 6);
+            ctx.fillStyle = '#666';
+            ctx.fillText(labels[index], x + barWidth / 2, padding + chartHeight + 18);
+        });
+    }
+
+    function drawDonutChart(canvasId, items) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = clearCanvas(canvas);
+        if (!ctx) return;
+
+        const total = items.reduce((sum, item) => sum + item.value, 0);
+        if (!total) {
+            drawEmptyChart(canvasId, 'No chart data');
+            return;
+        }
+
+        const centerX = 135;
+        const centerY = canvas.height / 2;
+        const radius = 72;
+        let start = -Math.PI / 2;
+
+        items.forEach(item => {
+            const angle = (item.value / total) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, start, start + angle);
+            ctx.closePath();
+            ctx.fillStyle = item.color;
+            ctx.fill();
+            start += angle;
+        });
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 38, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 18px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(total), centerX, centerY + 6);
+
+        items.forEach((item, index) => {
+            const y = 74 + index * 32;
+            ctx.fillStyle = item.color;
+            ctx.fillRect(290, y - 12, 14, 14);
+            ctx.fillStyle = '#333';
+            ctx.font = '14px Segoe UI';
+            ctx.textAlign = 'left';
+            ctx.fillText(`${item.label}: ${item.value}`, 314, y);
+        });
     }
 
     // Load dashboard data
     async function loadDashboard() {
+        if (hasAdminRole(userRole)) {
+            return loadManagerDashboard();
+        }
+
         try {
-            const response = await fetch(`/api/dashboard/${userId}`);
+            const response = await fetch('/api/dashboard');
             const data = await response.json();
 
             if (response.ok) {
@@ -260,12 +457,123 @@
         }
     }
 
+    async function loadManagerDashboard() {
+        document.getElementById('employeeDashboard').classList.add('hidden');
+        document.getElementById('managerDashboard').classList.remove('hidden');
+        document.getElementById('managerName').textContent = userName || 'Manager';
+
+        try {
+            const response = await fetch(`/api/manager/dashboard/${userId}`);
+            const data = await response.json();
+
+            if (response.ok) {
+                document.getElementById('teamCount').textContent = data.team_count || 0;
+                document.getElementById('pendingLeaves').textContent = data.pending_leaves || 0;
+                document.getElementById('todayPresent').textContent = data.today_present || 0;
+                drawManagerCharts(data);
+                loadPendingLeaves();
+            } else if (response.status === 401 || response.status === 403) {
+                localStorage.clear();
+                window.location.href = '/login';
+            }
+        } catch (error) {
+            console.error('Error loading admin dashboard:', error);
+        }
+    }
+
+    async function loadPendingLeaves() {
+        try {
+            const response = await fetch(`/api/manager/leave-requests/${userId}?status=pending`);
+            const leaves = await response.json();
+            const container = document.getElementById('pendingLeavesList');
+
+            if (!Array.isArray(leaves) || leaves.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #999;">No pending leave requests</p>';
+                return;
+            }
+
+            container.innerHTML = leaves.map(leave => `
+                <div style="padding: 1rem; border: 1px solid #eee; border-radius: 8px; margin-bottom: 1rem; background: #f9f9f9;">
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                        <strong>${leave.employee_name}</strong>
+                        <span class="badge badge-warning">${leave.leave_type}</span>
+                    </div>
+                    <p style="margin: 0.5rem 0; color: #666;">${formatDate(leave.from_date)} to ${formatDate(leave.to_date)} (${leave.days} days)</p>
+                    <p style="margin: 0.5rem 0; color: #666;">${leave.reason}</p>
+                    <button class="btn btn-success" onclick="approveLeave(${leave.id})">Approve</button>
+                    <button class="btn btn-danger" onclick="rejectLeave(${leave.id})">Reject</button>
+                </div>
+            `).join('');
+        } catch (error) {
+            console.error('Error loading leaves:', error);
+        }
+    }
+
+    async function approveLeave(requestId) {
+        const response = await fetch(`/api/manager/leave-request/${requestId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        showAlert(response.ok ? 'Leave request approved' : 'Failed to approve leave request', response.ok ? 'success' : 'danger');
+        loadManagerDashboard();
+    }
+
+    async function rejectLeave(requestId) {
+        if (!confirm('Are you sure you want to reject this leave request?')) {
+            return;
+        }
+        const response = await fetch(`/api/manager/leave-request/${requestId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        showAlert(response.ok ? 'Leave request rejected' : 'Failed to reject leave request', response.ok ? 'success' : 'danger');
+        loadManagerDashboard();
+    }
+
+    function formatDate(dateString) {
+        return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function drawEmployeeCharts(data) {
+        const recent = data.recent_attendance || [];
+        const labels = recent
+            .map(record => new Date(record.date).toLocaleDateString('en-US', { day: '2-digit' }))
+            .reverse();
+        const hours = recent
+            .map(record => Number((record.worked_hours || 0).toFixed(1)))
+            .reverse();
+
+        drawBarChart('employeeHoursChart', labels, hours, '#667eea');
+
+        drawDonutChart('employeeMonthChart', [
+            { label: 'Present', value: data.present_days || 0, color: '#28a745' },
+            { label: 'Leaves', value: data.leaves_taken || 0, color: '#ffc107' },
+            { label: 'Remaining', value: Math.max(0, 22 - (data.present_days || 0) - (data.leaves_taken || 0)), color: '#e5e7eb' }
+        ]);
+    }
+
+    function drawManagerCharts(data) {
+        drawBarChart('managerStatsChart', ['Employees', 'Present', 'Pending'], [
+            data.team_count || 0,
+            data.today_present || 0,
+            data.pending_leaves || 0
+        ], '#28a745');
+
+        drawDonutChart('managerLeaveChart', [
+            { label: 'Pending', value: data.pending_leaves || 0, color: '#ffc107' },
+            { label: 'Reviewed', value: Math.max(0, (data.team_count || 0) - (data.pending_leaves || 0)), color: '#667eea' }
+        ]);
+    }
+
     function updateDashboard(data) {
         // Update stats
         document.getElementById('todayHours').textContent = (data.today_hours || 0).toFixed(2);
         document.getElementById('presentDays').textContent = data.present_days || 0;
         document.getElementById('leavesTaken').textContent = data.leaves_taken || 0;
         document.getElementById('currentSalary').textContent = '₹' + (data.current_salary || 0).toFixed(2);
+        drawEmployeeCharts(data);
 
         // Update today's status
         if (data.today_checkin) {
@@ -314,7 +622,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ user_id: userId })
+                body: JSON.stringify({})
             });
 
             const data = await response.json();
@@ -340,7 +648,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ user_id: userId })
+                body: JSON.stringify({})
             });
 
             const data = await response.json();

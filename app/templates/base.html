@@ -298,20 +298,20 @@
     <nav id="navMenu" style="display: none; background: white; border-bottom: 2px solid #f0f0f0; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
         <div style="max-width: 1200px; margin: 0 auto; padding: 0 1rem; display: flex; gap: 2rem; flex-wrap: wrap; align-items: center;">
             <!-- Employee Navigation -->
-            <div id="employeeNav" style="display: none; width: 100%; display: flex; gap: 1rem;">
-                <a href="/dashboard" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">📊 Dashboard</a>
-                <a href="/attendance" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">📅 Attendance</a>
-                <a href="/salary" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">💰 Salary</a>
-                <a href="/leave" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">🏖️ Leave</a>
+            <div id="employeeNav" style="display: none; width: 100%; gap: 1rem;">
+                <a href="/dashboard" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s; display: inline-block;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Dashboard</a>
+                <a href="/attendance" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s; display: inline-block;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Attendance</a>
+                <a href="/salary" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s; display: inline-block;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Salary</a>
+                <a href="/leave" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s; display: inline-block;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Leave</a>
             </div>
 
             <!-- Manager Navigation -->
-            <div id="managerNav" style="display: none; width: 100%; display: flex; gap: 1rem;">
-                <a href="/manager-dashboard" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">📊 Dashboard</a>
-                <a href="/manager-leave-requests" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">📋 Leave Requests</a>
-                <a href="/manager-attendance" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">📊 Attendance</a>
-                <a href="/manager-payroll" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">💰 Payroll</a>
-                <a href="/manager-team" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'">👥 Team</a>
+            <div id="managerNav" style="display: none; width: 100%; gap: 1rem;">
+                <a href="/dashboard" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Dashboard</a>
+                <a href="/manager-leave-requests" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Leave Requests</a>
+                <a href="/manager-attendance" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Attendance</a>
+                <a href="/manager-payroll" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Payroll</a>
+                <a href="/manager-team" style="padding: 1rem; color: #667eea; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.3s;" onmouseover="this.style.borderBottomColor='#667eea'" onmouseout="this.style.borderBottomColor='transparent'"> Team</a>
             </div>
         </div>
     </nav>
@@ -319,19 +319,43 @@
     {% block content %}{% endblock %}
 
     <script>
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = function(resource, options = {}) {
+            const token = localStorage.getItem('access_token');
+            const url = typeof resource === 'string' ? resource : resource.url;
+            const isSameOrigin = url && (url.startsWith('/') || url.startsWith(window.location.origin));
+
+            if (token && isSameOrigin) {
+                options.headers = new Headers(options.headers || {});
+                if (!options.headers.has('Authorization')) {
+                    options.headers.set('Authorization', `Bearer ${token}`);
+                }
+            }
+
+            return originalFetch(resource, options);
+        };
+
+        function hasAdminRole(role) {
+            const normalizedRole = (role || '').toLowerCase();
+            return normalizedRole === 'admin' || normalizedRole === 'manager';
+        }
+
         // Initialize navigation on page load
         window.addEventListener('DOMContentLoaded', function() {
             const userRole = localStorage.getItem('user_role');
             const userName = localStorage.getItem('user_name');
             
-            document.getElementById('userName').textContent = userName || 'User';
+            const userNameElement = document.getElementById('userName');
+            if (userNameElement) {
+                userNameElement.textContent = userName || 'User';
+            }
             
             // Show appropriate navigation
             const navMenu = document.getElementById('navMenu');
             if (userRole) {
                 navMenu.style.display = 'block';
                 
-                if (userRole === 'manager') {
+                if (hasAdminRole(userRole)) {
                     document.getElementById('managerNav').style.display = 'flex';
                     document.getElementById('employeeNav').style.display = 'none';
                 } else {

@@ -371,11 +371,14 @@
 
     async function loadLeaveRequests() {
         try {
-            const response = await fetch(`/user/viewAttendance?user_id=${userId}`);
+            const response = await fetch(`/api/leave_requests/${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
             const data = await response.json();
 
             if (response.ok) {
-                // Fetch from LeaveRequest table via API
                 displayLeaveRequests(data);
             }
         } catch (error) {

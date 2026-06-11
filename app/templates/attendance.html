@@ -4,6 +4,99 @@
 
 {% block extra_css %}
 <style>
+    .checkin-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 2rem;
+        flex-wrap: wrap;
+    }
+
+    .checkin-info {
+        flex: 1;
+        min-width: 250px;
+    }
+
+    .checkin-info h3 {
+        margin: 0 0 1rem 0;
+        color: #333;
+    }
+
+    .checkin-time {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .time-display {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .time-display label {
+        font-weight: 600;
+        color: #666;
+    }
+
+    .time-display .value {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .checkin-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-checkin {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+
+    .btn-checkin:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    }
+
+    .btn-checkout {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+
+    .btn-checkout:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+    }
+
+    .btn-checkin:disabled,
+    .btn-checkout:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
     .filter-section {
         background: white;
         padding: 1.5rem;
@@ -210,6 +303,27 @@
 <div class="container">
     <h2 style="color: white; margin-top: 1rem;">Attendance Records</h2>
 
+    <!-- Check-in/Check-out Section -->
+    <div class="checkin-section">
+        <div class="checkin-info">
+            <h3>Daily Check-in/Check-out</h3>
+            <div class="checkin-time">
+                <div class="time-display">
+                    <label>Current Time:</label>
+                    <div class="value" id="currentTime">--:--:--</div>
+                </div>
+                <div class="time-display">
+                    <label>Today's Status:</label>
+                    <div class="value" id="todayStatus">Not Checked In</div>
+                </div>
+            </div>
+        </div>
+        <div class="checkin-buttons">
+            <button class="btn-checkin" id="checkinBtn" onclick="checkIn()">✓ Check In</button>
+            <button class="btn-checkout" id="checkoutBtn" onclick="checkOut()" disabled>✕ Check Out</button>
+        </div>
+    </div>
+
     <!-- Filters -->
     <div class="filter-section">
         <div class="form-group">
@@ -239,7 +353,7 @@
             </select>
         </div>
 
-        <button class="btn btn-secondary" onclick="downloadAttendance()">📥 Download CSV</button>
+        <button class="btn btn-secondary" onclick="downloadAttendance()"> Download CSV</button>
     </div>
 
     <!-- Attendance Stats -->
@@ -312,9 +426,6 @@
                 </tr>
             </thead>
             <tbody id="attendanceTable">
-                <tr>
-                    <td colspan="8" style="text-align: center; color: #999;">Loading...</td>
-                </tr>
             </tbody>
         </table>
     </div>
@@ -492,8 +603,103 @@
         });
     }
 
+    // Update current time
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+    }
+
+    // Check-in function
+    async function checkIn() {
+        try {
+            const response = await fetch('/api/checkin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('Checked in successfully!', 'success');
+                document.getElementById('checkinBtn').disabled = true;
+                document.getElementById('checkoutBtn').disabled = false;
+                document.getElementById('todayStatus').textContent = 'Checked In';
+                document.getElementById('todayStatus').style.color = '#28a745';
+            } else {
+                showAlert(data.error || 'Check-in failed', 'danger');
+            }
+        } catch (error) {
+            console.error('Check-in error:', error);
+            showAlert('Error during check-in', 'danger');
+        }
+    }
+
+    // Check-out function
+    async function checkOut() {
+        try {
+            const response = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                },
+                body: JSON.stringify({ user_id: userId })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('Checked out successfully!', 'success');
+                document.getElementById('checkinBtn').disabled = false;
+                document.getElementById('checkoutBtn').disabled = true;
+                document.getElementById('todayStatus').textContent = 'Checked Out';
+                document.getElementById('todayStatus').style.color = '#dc3545';
+            } else {
+                showAlert(data.error || 'Check-out failed', 'danger');
+            }
+        } catch (error) {
+            console.error('Check-out error:', error);
+            showAlert('Error during check-out', 'danger');
+        }
+    }
+
+    // Check today's status
+    async function checkTodayStatus() {
+        try {
+            const response = await fetch(`/api/attendance/today/${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.record) {
+                if (data.record.clock_out) {
+                    document.getElementById('checkinBtn').disabled = false;
+                    document.getElementById('checkoutBtn').disabled = true;
+                    document.getElementById('todayStatus').textContent = 'Checked Out';
+                    document.getElementById('todayStatus').style.color = '#dc3545';
+                } else if (data.record.clock_in) {
+                    document.getElementById('checkinBtn').disabled = true;
+                    document.getElementById('checkoutBtn').disabled = false;
+                    document.getElementById('todayStatus').textContent = 'Checked In';
+                    document.getElementById('todayStatus').style.color = '#28a745';
+                }
+            }
+        } catch (error) {
+            console.error('Error checking today status:', error);
+        }
+    }
 
     // Load initial data
     loadAttendance();
+    updateTime();
+    checkTodayStatus();
+    setInterval(updateTime, 1000);
 </script>
 {% endblock %}

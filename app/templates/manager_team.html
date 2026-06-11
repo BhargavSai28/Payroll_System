@@ -225,7 +225,7 @@
 {% block content %}
 <div class="page-header">
     <h1>Team Details</h1>
-    <a href="/manager-dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+    <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
 </div>
 
 <!-- Filter Section -->
@@ -261,7 +261,7 @@
     const userRole = localStorage.getItem('user_role');
 
     // Verify manager role
-    if (userRole !== 'manager') {
+    if (!hasAdminRole(userRole)) {
         window.location.href = '/login';
     }
 
@@ -324,7 +324,7 @@
                     </div>
 
                     <div class="detail-row">
-                        <span class="detail-label">💰 Net Salary</span>
+                        <span class="detail-label">💰 Take Home Salary</span>
                         <span class="detail-value salary">₹${emp.net_salary.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                     </div>
 
